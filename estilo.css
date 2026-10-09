@@ -1,0 +1,442 @@
+/* ============================================================
+   mi-polleria — estilo.css
+   Diseño mobile-first (sección 11). Sin dependencias externas.
+
+   Colores del local (sección 4): los valores por defecto son
+   EJEMPLO. app.js sobrescribirá estas variables en runtime con
+   LOCAL.colores (Orden 3). Ninguna regla usa colores fijos del
+   local: siempre se leen de --color-*.
+   ============================================================ */
+
+:root {
+  --color-primario: #C8102E; /* EJEMPLO */
+  --color-fondo:    #FFF8F0; /* EJEMPLO */
+  --color-texto:    #222222; /* EJEMPLO */
+
+  /* neutros estructurales (no forman parte de la marca) */
+  --superficie:  #FFFFFF;
+  --texto-suave: #666666;
+  --borde-suave: #DDDDDD;
+}
+
+/* Un elemento [hidden] nunca debe mostrarse, aunque otra regla
+   le asigne display. Garantiza "una sola pantalla visible". */
+[hidden] {
+  display: none !important;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  font-size: 16px; /* tipografía mínima 16px (sección 11) */
+  line-height: 1.4;
+  color: var(--color-texto);
+  background: var(--color-fondo);
+  min-height: 100vh;
+}
+
+/* ---------- Encabezado fijo ---------- */
+#encabezado {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 8px 12px;
+  background: var(--color-primario);
+  color: #FFFFFF;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+#local-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#local-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+#local-nombre {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* El distintivo MESA N es el dato más visible de la pantalla (sección 7) */
+#badge-mesa {
+  background: #FFFFFF;
+  color: var(--color-primario);
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 10px 14px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+#etiqueta-demo {
+  background: rgba(0, 0, 0, 0.35);
+  color: #FFFFFF;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+/* ---------- Zona principal ---------- */
+#contenido {
+  padding: 80px 12px 96px; /* hueco para header fijo y botón flotante */
+}
+
+.titulo-pantalla {
+  margin: 4px 0 14px;
+  font-size: 20px;
+  color: var(--color-texto);
+}
+
+/* ---------- Tarjeta de producto ---------- */
+.tarjeta-producto {
+  display: grid;
+  grid-template-columns: 96px 1fr 48px;
+  gap: 10px;
+  align-items: center;
+  background: var(--superficie);
+  border-radius: 14px;
+  padding: 10px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.foto-producto {
+  width: 96px;
+  height: 96px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--borde-suave);
+}
+
+.foto-producto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Variante sin foto: degradado digno con tipografía clara (sección 16.6).
+   app.js añade la clase .sin-foto y oculta la etiqueta img al fallar la carga. */
+.foto-producto.sin-foto {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--color-primario) 0%, var(--color-texto) 100%);
+  color: #FFFFFF;
+  font-size: 32px;
+  font-weight: 700;
+}
+
+.nombre-producto {
+  margin: 0 0 2px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-texto);
+}
+
+.incluye-producto {
+  margin: 0 0 4px;
+  font-size: 13px;
+  color: var(--texto-suave);
+}
+
+.precio-producto {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-primario);
+}
+
+.boton-mas {
+  width: 48px;
+  height: 48px;
+  border: none;
+  border-radius: 50%;
+  background: var(--color-primario);
+  color: #FFFFFF;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---------- Opciones en línea ----------
+   Estructura por opción (la genera app.js):
+   <span class="opcion"><input type="radio" id="..."><label for="...">…</label></span> */
+.opciones-inline {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--borde-suave);
+}
+
+.opcion {
+  position: relative;
+}
+
+.opcion input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.opcion label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px; /* área táctil mínima (sección 11) */
+  padding: 8px 14px;
+  border: 2px solid var(--color-primario);
+  border-radius: 999px;
+  background: var(--superficie);
+  color: var(--color-primario);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.opcion input:checked + label {
+  background: var(--color-primario);
+  color: #FFFFFF;
+}
+
+.boton-agregar {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 48px;
+  border: none;
+  border-radius: 12px;
+  background: var(--color-primario);
+  color: #FFFFFF;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ---------- Botones generales ---------- */
+.boton-primario,
+.boton-secundario {
+  width: 100%;
+  min-height: 48px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-bottom: 10px;
+}
+
+.boton-primario {
+  border: none;
+  background: var(--color-primario);
+  color: #FFFFFF;
+}
+
+.boton-secundario {
+  border: 2px solid var(--color-primario);
+  background: var(--superficie);
+  color: var(--color-primario);
+}
+
+/* ---------- Pantalla de carrito ---------- */
+.linea-carrito {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  background: var(--superficie);
+  border-radius: 12px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.linea-carrito .nombre-linea {
+  flex: 1 1 130px;
+  font-weight: 700;
+}
+
+.linea-carrito .opciones-linea {
+  flex-basis: 100%;
+  font-size: 13px;
+  color: var(--texto-suave);
+}
+
+.controles-cantidad {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.boton-cantidad {
+  width: 48px;
+  height: 48px;
+  border: 2px solid var(--color-primario);
+  border-radius: 50%;
+  background: var(--superficie);
+  color: var(--color-primario);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cantidad {
+  min-width: 24px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.precio-linea {
+  font-weight: 700;
+}
+
+.boton-quitar {
+  min-width: 48px;
+  min-height: 48px;
+  border: none;
+  background: transparent;
+  color: var(--texto-suave);
+  font-size: 15px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.total-carrito {
+  background: var(--superficie);
+  border-radius: 12px;
+  padding: 14px;
+  margin: 12px 0;
+  text-align: right;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+/* ---------- Pantalla de confirmación ---------- */
+.etiqueta-campo {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+#nota-pedido {
+  width: 100%;
+  min-height: 88px;
+  padding: 10px;
+  border: 1px solid var(--borde-suave);
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 16px;
+  color: var(--color-texto);
+  background: var(--superficie);
+  resize: vertical;
+}
+
+#contador-nota {
+  text-align: right;
+  font-size: 13px;
+  color: var(--texto-suave);
+  margin: 4px 0 12px;
+}
+
+/* ---------- Pantalla de aviso / cortesía (sección 12) ---------- */
+#pantalla-aviso {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 55vh;
+  gap: 16px;
+  padding: 24px 16px;
+}
+
+#aviso-texto {
+  max-width: 340px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-texto);
+}
+
+#aviso-mesa-selector select {
+  min-height: 48px;
+  padding: 8px 12px;
+  border: 2px solid var(--color-primario);
+  border-radius: 10px;
+  background: var(--superficie);
+  color: var(--color-texto);
+  font-size: 16px;
+}
+
+/* ---------- Botón flotante (sección 7) ---------- */
+.boton-flotante {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 100;
+  min-height: 56px;
+  border: none;
+  border-radius: 28px;
+  background: var(--color-primario);
+  color: #FFFFFF;
+  font-size: 16px;
+  font-weight: 800;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+
+/* ---------- Foco visible (accesibilidad) ---------- */
+button:focus-visible,
+textarea:focus,
+select:focus {
+  outline: 3px solid var(--color-primario);
+  outline-offset: 2px;
+}
+
+/* ---------- Pantallas medianas/grandes ---------- */
+@media (min-width: 768px) {
+  #contenido {
+    max-width: 680px;
+    margin: 0 auto;
+  }
+
+  .boton-flotante {
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 560px;
+  }
+}

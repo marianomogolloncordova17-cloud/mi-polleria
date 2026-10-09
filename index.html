@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pollería</title>
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+
+  <!-- ENCABEZADO FIJO (sección 7): logo/nombre + MESA N + DEMO -->
+  <header id="encabezado">
+    <div id="local-info">
+      <img id="local-logo" alt="Logo del local" hidden>
+      <h1 id="local-nombre"></h1>
+    </div>
+    <div id="badge-mesa" hidden>MESA <span id="mesa-numero"></span></div>
+    <span id="etiqueta-demo" hidden>DEMO</span>
+  </header>
+
+  <main id="contenido">
+
+    <!-- PANTALLA 1: LISTA DE PRODUCTOS (sección 7) -->
+    <section id="pantalla-lista" class="pantalla">
+      <div id="lista-menu"><!-- las tarjetas se renderizan por app.js desde los datos --></div>
+    </section>
+
+    <!-- PANTALLA 2: CARRITO (sección 7) -->
+    <section id="pantalla-carrito" class="pantalla" hidden>
+      <h2 class="titulo-pantalla">Tu pedido</h2>
+      <div id="lineas-carrito"><!-- las líneas se renderizan por app.js --></div>
+      <div id="total-carrito"><!-- el total se renderiza por app.js --></div>
+      <button type="button" id="boton-confirmar" class="boton-primario">Confirmar pedido</button>
+      <button type="button" id="boton-volver-lista" class="boton-secundario">Seguir pidiendo</button>
+    </section>
+
+    <!-- PANTALLA 3: CONFIRMACIÓN (sección 7) -->
+    <section id="pantalla-confirmacion" class="pantalla" hidden>
+      <h2 class="titulo-pantalla">Confirma tu pedido</h2>
+      <div id="resumen-confirmacion"><!-- el resumen se renderiza por app.js --></div>
+      <label class="etiqueta-campo" for="nota-pedido">¿Algo más que debamos saber? (opcional)</label>
+      <textarea id="nota-pedido" rows="3" maxlength="80" placeholder="Ej.: sin ají, traer vasos extra"></textarea>
+      <div id="contador-nota">0/80</div>
+      <button type="button" id="boton-enviar-whatsapp" class="boton-primario">Confirmar y enviar por WhatsApp</button>
+      <button type="button" id="boton-editar-pedido" class="boton-secundario">Editar pedido</button>
+    </section>
+
+    <!-- PANTALLA DE AVISO: cortesía y errores (sección 12) -->
+    <section id="pantalla-aviso" class="pantalla" hidden>
+      <div id="aviso-texto"><!-- el texto exacto lo pone app.js --></div>
+      <div id="aviso-mesa-selector" hidden><!-- selector de mesa 1-30 (sección 4) --></div>
+    </section>
+
+  </main>
+
+  <!-- BOTÓN FLOTANTE FIJO (sección 7) -->
+  <button type="button" id="boton-ver-pedido" class="boton-flotante">Ver pedido (0) — S/ 0.00</button>
+
+  <script src="app.js"></script>
+</body>
+</html>

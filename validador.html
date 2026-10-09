@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Validador y pruebas del catálogo</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: system-ui, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.45;
+    background: #F5F5F0;
+    color: #222;
+    margin: 0;
+    padding: 20px;
+  }
+  .caja {
+    max-width: 760px;
+    margin: 0 auto;
+    background: #FFF;
+    border-radius: 12px;
+    padding: 22px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.1);
+  }
+  h1 { font-size: 22px; margin: 0 0 8px; }
+  h2 { font-size: 18px; margin: 22px 0 8px; }
+  p { overflow-wrap: anywhere; }
+  .info { color: #555; margin: 6px 0; }
+  .controles { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 14px; }
+  select, button {
+    min-height: 46px;
+    font: inherit;
+    border-radius: 8px;
+    border: 2px solid #C8102E;
+    padding: 8px 12px;
+  }
+  select { background: #FFF; color: #222; flex: 1 1 190px; }
+  button { background: #C8102E; color: #FFF; cursor: pointer; }
+  button:disabled, select:disabled { opacity: .55; cursor: wait; }
+  #resultado, #resultado-pruebas { margin-top: 14px; }
+  .ok { color: #0B7A3B; font-weight: 700; }
+  .error { color: #B00020; margin: 6px 0; }
+  .advertencia { color: #8A5200; margin: 6px 0; }
+  .prueba { border-top: 1px solid #E5E5E5; padding: 9px 0; margin: 0; }
+  .prueba-ok { color: #0B7A3B; }
+  .prueba-fallo { color: #B00020; }
+  .nota { background: #F5F5F0; border-radius: 8px; padding: 12px; margin-top: 16px; }
+  code { overflow-wrap: anywhere; }
+  @media (max-width: 520px) {
+    body { padding: 10px; }
+    .caja { padding: 16px; }
+    .controles { align-items: stretch; }
+    button, select { width: 100%; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="caja">
+  <h1>Validador del catálogo</h1>
+  <p class="info">Comprueba el archivo real del proyecto y ejecuta pruebas automáticas de las reglas principales del catálogo.</p>
+
+  <h2>1. Validar un local del proyecto</h2>
+  <p class="info">Guarda este archivo en la carpeta raíz de mi-polleria, junto a <code>menu.js</code>. Para otros locales, debe existir su archivo dentro de <code>clientes/</code>.</p>
+  <div class="controles">
+    <select id="selector-local" aria-label="Seleccionar local">
+      <option value="demo">demo (menu.js)</option>
+      <option value="polleria-1">polleria-1 (clientes/polleria-1.js)</option>
+    </select>
+    <button type="button" id="boton-validar">Validar catálogo</button>
+  </div>
+  <div id="resultado" aria-live="polite"><p class="info">Aún no se ha validado ningún catálogo.</p></div>
+
+  <h2>2. Ejecutar pruebas automáticas</h2>
+  <p class="info">Estas pruebas usan una copia de datos de demostración incluida en esta página. No modifican tu archivo <code>menu.js</code>.</p>
+  <div class="controles">
+    <button type="button" id="boton-pruebas">Ejecutar pruebas automáticas</button>
+  </div>
+  <div id="resultado-pruebas" aria-live="polite"><p class="info">Todavía no se han ejecutado las pruebas.</p></div>
+
+  <div class="nota">
+    <strong>Importante:</strong> las pruebas automáticas comprueban las reglas del validador. Para revisar las fotografías y el archivo real, ejecuta también “Validar catálogo”. Un resultado de prueba correcto no sustituye la revisión funcional completa de la tienda.
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var validando = false;
+  var pruebaEnCurso = false;
+
+  function $(id) {
+    return document.getElementById(id);
+  }
+
+  function vaciar(nodo) {
+    while (nodo.firstChild) nodo.removeChild(nodo.firstChild);
+  }
+
+  function linea(cont, texto, clase) {
+    var p = document.createElement("p");
+    p.className = clase || "info";
+    p.textContent = texto;
+    cont.appendChild(p);
+    return p;
+  }
+
+  function bloquearControles(bloquear) {
+    $("boton-validar").disabled = bloquear;
+    $("boton-pruebas").disabled = bloquear;
+    $("selector-local").disabled = bloquear;
+  }
+
+  function cerrarScript(script) {
+    if (script && script.parentNode) {
+      script.parentNode.removeChild(script);
+    }
+  }
+
+  function mostrarResultadoCatalogo(salida, resultado) {
+    vaciar(salida);
+
+    if (resultado.errores.length === 0 && resultado.advertencias.length === 0) {
+      linea(salida, "OK — " + resultado.totalItems + " productos", "ok");
+      return;
+    }
+
+    linea(salida, "Productos revisados: " + resultado.totalItems, "info");
+
+    resultado.errores.forEach(function (mensaje) {
+      linea(salida, "✗ " + mensaje, "error");
+    });
+
+    resultado.advertencias.forEach(function (mensaje) {
+      linea(salida, "⚠ " + mensaje, "advertencia");
+    });
+
+    if (resultado.errores.length > 0) {
+      linea(salida, "Corrige los errores y vuelve a validar.", "info");
+    }
+  }
+
+  // Comprueba la estructura sin iniciar todavía las comprobaciones de imágenes.
+  // Esto permite reutilizar las mismas reglas en las pruebas automáticas.
+  function revisarCatalogo(LOCAL) {
+    var resultado = {
+      errores: [],
+      advertencias: [],
+      totalItems: 0,
+      imagenes: []
+    };
+    var idsVistos = Object.create(null);
+
+    if (!LOCAL || typeof LOCAL !== "object" || Array.isArray(LOCAL)) {
+      resultado.errores.push("El archivo no proporciona un objeto LOCAL válido.");
+      return resultado;
+    }
+
+    if (typeof LOCAL.nombre !== "string" || LOCAL.nombre.trim() === "") {
+      resultado.errores.push("Falta el nombre del local ('nombre').");
+    }
+
+    if (!/^[0-9]{9,15}$/.test(String(LOCAL.whatsappCaja || ""))) {
+      resultado.errores.push("'whatsappCaja' debe contener entre 9 y 15 dígitos, incluido el código de país y sin espacios ni símbolos.");
+    }
+
+    if (!Array.isArray(LOCAL.menu)) {
+      resultado.errores.push("El campo 'menu' no es una lista válida.");
+      return resultado;
+    }
+
+    if (LOCAL.menu.length === 0) {
+      resultado.errores.push("El catálogo no contiene categorías ni productos.");
+      return resultado;
+    }
+
+    LOCAL.menu.forEach(function (categoria) {
+      if (!categoria || typeof categoria !== "object" || Array.isArray(categoria)) {
+        resultado.errores.push("Hay una categoría mal escrita: no es un objeto válido.");
+        return;
+      }
+
+      if (typeof categoria.categoria !== "string" || categoria.categoria.trim() === "") {
+        resultado.errores.push("Una categoría no tiene un nombre de texto válido ('categoria').");
+      }
+
+      if (!Array.isArray(categoria.items)) {
+        resultado.errores.push("La categoría '" + (categoria.categoria || "?") + "' no tiene una lista válida 'items'.");
+        return;
+      }
+
+      categoria.items.forEach(function (item) {
+        if (!item || typeof item !== "object" || Array.isArray(item)) {
+          resultado.errores.push("Hay una línea de producto mal formada en la categoría '" + (categoria.categoria || "?") + "'.");
+          return;
+        }
+
+        resultado.totalItems++;
+        var quien = (typeof item.nombre === "string" && item.nombre.trim()) ? item.nombre : (item.id || "?");
+
+        if (typeof item.id !== "string" || item.id.trim() === "") {
+          resultado.errores.push("El producto '" + quien + "' debe tener un identificador de texto no vacío ('id').");
+        } else if (idsVistos[item.id]) {
+          resultado.errores.push("ID duplicado: '" + item.id + "' aparece en más de un producto.");
+        } else {
+          idsVistos[item.id] = true;
+        }
+
+        if (typeof item.nombre !== "string" || item.nombre.trim() === "") {
+          resultado.errores.push("El producto '" + (item.id || "?") + "' debe tener un nombre de texto no vacío.");
+        }
+
+        if (typeof item.precio !== "number" || !Number.isFinite(item.precio) || item.precio <= 0) {
+          resultado.errores.push("Precio inválido en '" + quien + "': debe ser un número finito mayor a 0 (ejemplo: 18).");
+        }
+
+        if (item.opciones !== undefined && item.opciones !== null) {
+          if (!Array.isArray(item.opciones)) {
+            resultado.errores.push("'opciones' debe ser una lista en '" + quien + "'.");
+          } else {
+            var tiposVistos = Object.create(null);
+
+            item.opciones.forEach(function (op) {
+              if (!op || typeof op !== "object" || Array.isArray(op)) {
+                resultado.errores.push("Hay un grupo de opciones mal formado en '" + quien + "'.");
+                return;
+              }
+
+              if (typeof op.tipo !== "string" || op.tipo.trim() === "") {
+                resultado.errores.push("Un grupo de opciones de '" + quien + "' debe tener un 'tipo' de texto.");
+              } else if (tiposVistos[op.tipo]) {
+                resultado.errores.push("El grupo de opciones '" + op.tipo + "' está repetido en '" + quien + "'. Usa un nombre de tipo distinto para cada grupo.");
+              } else {
+                tiposVistos[op.tipo] = true;
+              }
+
+              if (!Array.isArray(op.choices) || op.choices.length === 0) {
+                resultado.errores.push("Opción mal escrita en '" + quien + "': falta la lista no vacía 'choices'.");
+                return;
+              }
+
+              var algunaConPrecio = op.choices.some(function (ch) {
+                return ch && typeof ch === "object" && ch.precio !== undefined;
+              });
+
+              var todasConPrecio = op.choices.every(function (ch) {
+                return ch && typeof ch === "object" && typeof ch.precio === "number" && Number.isFinite(ch.precio);
+              });
+
+              if (algunaConPrecio && !todasConPrecio) {
+                resultado.errores.push("Opción '" + (op.tipo || "?") + "' en '" + quien + "': si una opción define precio, todas las opciones de ese grupo deben tener un precio numérico válido.");
+              }
+
+              op.choices.forEach(function (ch) {
+                if (!ch || typeof ch !== "object" || Array.isArray(ch)) {
+                  resultado.errores.push("Opción '" + (op.tipo || "?") + "' en '" + quien + "' contiene una choice que no es un objeto válido.");
+                  return;
+                }
+
+                if (typeof ch.nombre !== "string" || ch.nombre.trim() === "") {
+                  resultado.errores.push("Opción '" + (op.tipo || "?") + "' en '" + quien + "' contiene una choice sin nombre de texto.");
+                }
+
+                if (ch.precio !== undefined && (typeof ch.precio !== "number" || !Number.isFinite(ch.precio) || ch.precio < 0)) {
+                  resultado.errores.push("Opción '" + (op.tipo || "?") + "' en '" + quien + "' contiene un precio inválido. El precio 0 sí es válido.");
+                }
+              });
+            });
+          }
+        }
+
+        if (item.incluye !== undefined && item.incluye !== null) {
+          if (!Array.isArray(item.incluye)) {
+            resultado.errores.push("'incluye' debe ser una lista en '" + quien + "'.");
+          } else if (!item.incluye.every(function (elemento) { return typeof elemento === "string"; })) {
+            resultado.errores.push("Todos los elementos de 'incluye' deben ser textos en '" + quien + "'.");
+          }
+        }
+
+        if (item.fotoUrl !== undefined && item.fotoUrl !== null && typeof item.fotoUrl !== "string") {
+          resultado.errores.push("'fotoUrl' debe ser texto en '" + quien + "'.");
+        } else if (typeof item.fotoUrl === "string" && item.fotoUrl.trim() !== "") {
+          resultado.imagenes.push({ ruta: item.fotoUrl, producto: quien });
+        }
+      });
+    });
+
+    if (resultado.totalItems === 0) {
+      resultado.errores.push("El catálogo no contiene ningún producto.");
+    }
+
+    return resultado;
+  }
+
+  // Espera los eventos reales de todas las imágenes. Si una imagen no responde,
+  // registra una advertencia en vez de declarar que se comprobó correctamente.
+  function comprobarImagenes(resultado, callback) {
+    var imagenes = resultado.imagenes;
+    if (!imagenes.length) {
+      callback();
+      return;
+    }
+
+    var pendientes = imagenes.length;
+    var esFile = window.location.protocol === "file:";
+
+    function imagenTerminada() {
+      pendientes--;
+      if (pendientes === 0) callback();
+    }
+
+    imagenes.forEach(function (dato) {
+      var img = new Image();
+      var resuelto = false;
+      var temporizador;
+
+      function cerrar() {
+        if (resuelto) return;
+        resuelto = true;
+        clearTimeout(temporizador);
+        imagenTerminada();
+      }
+
+      img.onload = function () {
+        cerrar();
+      };
+
+      img.onerror = function () {
+        if (esFile) {
+          resultado.advertencias.push("No se pudo comprobar la foto '" + dato.ruta + "' del producto '" + dato.producto + "' al abrir la página como archivo local. Verifica la imagen al publicar.");
+        } else {
+          resultado.errores.push("No se pudo cargar la foto '" + dato.ruta + "' del producto '" + dato.producto + "'. Comprueba la ruta y el nombre del archivo.");
+        }
+        cerrar();
+      };
+
+      temporizador = setTimeout(function () {
+        if (resuelto) return;
+        resultado.advertencias.push("No se pudo verificar la foto '" + dato.ruta + "' del producto '" + dato.producto + "' porque no respondió en 8 segundos.");
+        cerrar();
+      }, 8000);
+
+      img.src = dato.ruta;
+    });
+  }
+
+  // ---------- Validación del archivo real del proyecto ----------
+
+  function validarCatalogoReal() {
+    if (validando || pruebaEnCurso) return;
+    validando = true;
+    bloquearControles(true);
+
+    var salida = $("resultado");
+    vaciar(salida);
+    linea(salida, "Cargando archivo del catálogo...", "info");
+
+    var localId = $("selector-local").value;
+    var ruta = (localId === "demo") ? "menu.js" : "clientes/" + localId + ".js";
+    var script = document.createElement("script");
+    var finalizado = false;
+
+    function finalizar() {
+      if (finalizado) return;
+      finalizado = true;
+      cerrarScript(script);
+      validando = false;
+      bloquearControles(false);
+    }
+
+    // Evita reutilizar datos del intento anterior. El archivo menu.js usa var LOCAL.
+    window.LOCAL = undefined;
+
+    script.onerror = function () {
+      vaciar(salida);
+      linea(salida, "No se pudo cargar '" + ruta + "'. Comprueba que el archivo exista, que la ruta sea correcta y que el navegador pueda leerlo. Este evento por sí solo no permite asegurar si la causa es ausencia del archivo, acceso bloqueado u otro fallo de carga.", "error");
+      finalizar();
+    };
+
+    script.onload = function () {
+      if (!window.LOCAL || typeof window.LOCAL !== "object" || Array.isArray(window.LOCAL)) {
+        vaciar(salida);
+        linea(salida, "El archivo se cargó, pero no dejó un objeto global LOCAL válido. Revisa la sintaxis y confirma que el archivo defina 'var LOCAL = { ... };'.", "error");
+        finalizar();
+        return;
+      }
+
+      var resultado = revisarCatalogo(window.LOCAL);
+      comprobarImagenes(resultado, function () {
+        mostrarResultadoCatalogo(salida, resultado);
+        finalizar();
+      });
+    };
+
+    script.src = ruta;
+    document.body.appendChild(script);
+  }
+
+  // ---------- Catálogo de prueba basado en el menu.js compartido ----------
+  // Las fotos se omiten en las pruebas de estructura para que sean reproducibles.
+
+  function crearCatalogoPrueba() {
+    return {
+      id: "demo",
+      nombre: "Pollería Demo (EJEMPLO)",
+      logoUrl: "",
+      colores: { primario: "#C8102E", fondo: "#FFF8F0", texto: "#222222" },
+      whatsappCaja: "51900000000",
+      menu: [
+        { categoria: "Pollos", items: [
+          { id: "pollo4", nombre: "1/4 Pollo a la brasa", precio: 18, opciones: [{ tipo: "Pieza", requerido: true, choices: [{ nombre: "Pechuga", precio: 18 }, { nombre: "Pierna", precio: 18 }] }], incluye: ["Papas", "Ensalada"] },
+          { id: "pollo8", nombre: "1/2 Pollo a la brasa", precio: 32, opciones: [{ tipo: "Pieza", requerido: true, choices: [{ nombre: "Pechuga", precio: 32 }, { nombre: "Pierna", precio: 32 }] }], incluye: ["Papas", "Ensalada"] },
+          { id: "pollo-ent", nombre: "Pollo Entero", precio: 58, opciones: [], incluye: ["Papas x2", "Ensalada x2"] }
+        ] },
+        { categoria: "Cremas", items: [
+          { id: "crema-aji", nombre: "Ají de la casa", precio: 2, fotoUrl: "" },
+          { id: "crema-mayo", nombre: "Mayonesa", precio: 2, fotoUrl: "" },
+          { id: "crema-ocopa", nombre: "Ocopa", precio: 2.5, fotoUrl: "" }
+        ] },
+        { categoria: "Bebidas", items: [
+          { id: "chicha-j", nombre: "Chicha morada jarra", precio: 12, fotoUrl: "" },
+          { id: "inka-15", nombre: "Inca Kola 1.5L", precio: 10, fotoUrl: "" }
+        ] },
+        { categoria: "Adicionales", items: [
+          { id: "aguadito", nombre: "Aguadito de pollo", precio: 10, fotoUrl: "" },
+          { id: "teque", nombre: "Tequeños de pollo (6u)", precio: 14, fotoUrl: "" }
+        ] }
+      ]
+    };
+  }
+
+  function clonar(objeto) {
+    return JSON.parse(JSON.stringify(objeto));
+  }
+
+  function tieneError(resultado, texto) {
+    return resultado.errores.some(function (mensaje) {
+      return mensaje.toLowerCase().indexOf(texto.toLowerCase()) !== -1;
+    });
+  }
+
+  function ejecutarPruebas() {
+    if (validando || pruebaEnCurso) return;
+    pruebaEnCurso = true;
+    bloquearControles(true);
+
+    var salida = $("resultado-pruebas");
+    vaciar(salida);
+    linea(salida, "Ejecutando pruebas automáticas...", "info");
+
+    var pruebas = [];
+    function registrar(nombre, correcto, detalle) {
+      pruebas.push({ nombre: nombre, correcto: !!correcto, detalle: detalle || "" });
+    }
+
+    var base = crearCatalogoPrueba();
+    var resultadoBase = revisarCatalogo(clonar(base));
+    registrar(
+      "Catálogo de demostración válido: detecta 10 productos y no encuentra errores.",
+      resultadoBase.errores.length === 0 && resultadoBase.totalItems === 10,
+      "Productos detectados: " + resultadoBase.totalItems + "; errores: " + resultadoBase.errores.length
+    );
+
+    var vacio = clonar(base);
+    vacio.menu = [];
+    var rVacio = revisarCatalogo(vacio);
+    registrar("Rechaza un menú vacío.", tieneError(rVacio, "no contiene categorías"), rVacio.errores.join(" | "));
+
+    var categoriaVacia = clonar(base);
+    categoriaVacia.menu = [{ categoria: "Vacía", items: [] }];
+    var rCategoriaVacia = revisarCatalogo(categoriaVacia);
+    registrar("Rechaza categorías sin productos en todo el catálogo.", tieneError(rCategoriaVacia, "no contiene ningún producto"), rCategoriaVacia.errores.join(" | "));
+
+    var sinNombre = clonar(base);
+    delete sinNombre.menu[0].items[0].nombre;
+    var rSinNombre = revisarCatalogo(sinNombre);
+    registrar("Detecta un producto sin nombre.", tieneError(rSinNombre, "nombre de texto no vacío"), rSinNombre.errores.join(" | "));
+
+    var precioCero = clonar(base);
+    precioCero.menu[1].items[0].precio = 0;
+    var rPrecioCero = revisarCatalogo(precioCero);
+    registrar("Rechaza precio base igual a cero.", tieneError(rPrecioCero, "precio inválido"), rPrecioCero.errores.join(" | "));
+
+    var precioNaN = clonar(base);
+    precioNaN.menu[1].items[0].precio = NaN;
+    var rPrecioNaN = revisarCatalogo(precioNaN);
+    registrar("Detecta un precio NaN.", tieneError(rPrecioNaN, "precio inválido"), rPrecioNaN.errores.join(" | "));
+
+    var duplicado = clonar(base);
+    duplicado.menu[1].items[0].id = duplicado.menu[0].items[0].id;
+    var rDuplicado = revisarCatalogo(duplicado);
+    registrar("Detecta identificadores duplicados.", tieneError(rDuplicado, "id duplicado"), rDuplicado.errores.join(" | "));
+
+    var choicesRotos = clonar(base);
+    choicesRotos.menu[0].items[0].opciones[0].choices = [];
+    var rChoices = revisarCatalogo(choicesRotos);
+    registrar("Detecta un grupo de opciones con choices vacío.", tieneError(rChoices, "choices"), rChoices.errores.join(" | "));
+
+    var productoNulo = clonar(base);
+    productoNulo.menu[0].items.push(null);
+    var rProductoNulo = revisarCatalogo(productoNulo);
+    registrar("Un producto null genera un error controlado y no detiene la auditoría.", tieneError(rProductoNulo, "producto mal formada"), rProductoNulo.errores.join(" | "));
+
+    var whatsappMalo = clonar(base);
+    whatsappMalo.whatsappCaja = "+51 900-000-000";
+    var rWhatsapp = revisarCatalogo(whatsappMalo);
+    registrar("Rechaza un WhatsApp con símbolos y espacios.", tieneError(rWhatsapp, "whatsappCaja"), rWhatsapp.errores.join(" | "));
+
+    var precioOpcionMixto = clonar(base);
+    precioOpcionMixto.menu[0].items[0].opciones[0].choices[1].precio = undefined;
+    var rOpcionMixta = revisarCatalogo(precioOpcionMixto);
+    registrar("Detecta opciones mezcladas, unas con precio y otras sin él.", tieneError(rOpcionMixta, "todas las opciones"), rOpcionMixta.errores.join(" | "));
+
+    var colorSinPrecio = clonar(base);
+    colorSinPrecio.menu[1].items[0].opciones = [{ tipo: "Color", choices: [{ nombre: "Rojo" }, { nombre: "Verde" }] }];
+    var rColor = revisarCatalogo(colorSinPrecio);
+    registrar("Permite un grupo como Color cuyas choices no tienen precio.", rColor.errores.length === 0, rColor.errores.join(" | "));
+
+    var idEspecial = clonar(base);
+    idEspecial.menu[1].items[0].id = "constructor";
+    var rIdEspecial = revisarCatalogo(idEspecial);
+    registrar("Acepta el ID 'constructor' si no está duplicado.", rIdEspecial.errores.length === 0, rIdEspecial.errores.join(" | "));
+
+    var fotos = clonar(base);
+    fotos.menu[1].items[0].fotoUrl = 123;
+    var rFotoNoTexto = revisarCatalogo(fotos);
+    registrar("Detecta fotoUrl cuando no es texto.", tieneError(rFotoNoTexto, "fotourl"), rFotoNoTexto.errores.join(" | "));
+
+    // Renderizar resultados y anunciar que la prueba de red de imagen se comprobará aparte.
+    vaciar(salida);
+    var aprobadas = pruebas.filter(function (p) { return p.correcto; }).length;
+    linea(salida, "Pruebas estructurales: " + aprobadas + "/" + pruebas.length + " correctas.", aprobadas === pruebas.length ? "ok" : "error");
+
+    pruebas.forEach(function (p) {
+      var fila = document.createElement("p");
+      fila.className = "prueba " + (p.correcto ? "prueba-ok" : "prueba-fallo");
+      fila.textContent = (p.correcto ? "✓ " : "✗ ") + p.nombre + (p.detalle ? " Detalle: " + p.detalle : "");
+      salida.appendChild(fila);
+    });
+
+    // Prueba de imagen realmente inexistente para comprobar que no se cuelga.
+    var resultadoFoto = { errores: [], advertencias: [], imagenes: [{ ruta: "__archivo_de_prueba_que_no_existe__.webp", producto: "Producto de prueba" }] };
+    linea(salida, "Comprobando respuesta de una imagen inexistente...", "info");
+
+    comprobarImagenes(resultadoFoto, function () {
+      var detectada = resultadoFoto.errores.length + resultadoFoto.advertencias.length > 0;
+      var texto = window.location.protocol === "file:"
+        ? "Prueba de imagen: se registró una advertencia al probar desde file://."
+        : "Prueba de imagen: se registró un error o advertencia al probar desde un servidor.";
+      var filaFoto = document.createElement("p");
+      filaFoto.className = "prueba " + (detectada ? "prueba-ok" : "prueba-fallo");
+      filaFoto.textContent = (detectada ? "✓ " : "✗ ") + texto + (resultadoFoto.errores[0] || resultadoFoto.advertencias[0] || "No se recibió resultado.");
+      salida.appendChild(filaFoto);
+
+      if (!detectada) {
+        linea(salida, "La prueba de imagen no pudo confirmar el fallo. Revisa la conexión o vuelve a intentarlo.", "advertencia");
+      }
+
+      pruebaEnCurso = false;
+      bloquearControles(false);
+    });
+  }
+
+  $("boton-validar").addEventListener("click", validarCatalogoReal);
+  $("boton-pruebas").addEventListener("click", ejecutarPruebas);
+})();
+</script>
+</body>
+</html>
