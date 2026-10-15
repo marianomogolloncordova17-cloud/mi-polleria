@@ -28,7 +28,7 @@ var LOCAL = {
     { categoria: "Pollos", items: [
       { id: "pollo4", nombre: "1/4 Pollo a la brasa", precio: 18, fotoUrl: "fotos/cuarto-pollo.webp", opciones: [{ tipo: "Pieza", requerido: true, choices: [{ nombre: "Pechuga", precio: 18 }, { nombre: "Pierna", precio: 18 }] }], incluye: ["Papas", "Ensalada"] },
       { id: "pollo8", nombre: "1/2 Pollo a la brasa", precio: 32, fotoUrl: "fotos/medio-pollo.webp", opciones: [{ tipo: "Pieza", requerido: true, choices: [{ nombre: "Pechuga", precio: 32 }, { nombre: "Pierna", precio: 32 }] }], incluye: ["Papas", "Ensalada"] },
-      { id: "pollo-ent", nombre: "Pollo Entero", precio: 58, fotoUrl: "fotos/pollo-entero.webp", opciones: [], incluye: ["Papas x2", "Ensalada x2"] }
+      { id: "pollo-ent", nombre: "Pollo Entero", precio: 58, destacado: "EL MÁS PEDIDO", fotoUrl: "fotos/pollo-entero.webp", opciones: [], incluye: ["Papas x2", "Ensalada x2"] }
     ] },
     { categoria: "Cremas", items: [
       { id: "crema-aji", nombre: "Ají de la casa", precio: 2, fotoUrl: "fotos/cremas.webp" },
