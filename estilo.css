@@ -439,4 +439,64 @@ select:focus {
     transform: translateX(-50%);
     max-width: 560px;
   }
+
+/* ===== MEJORAS VISUALES v1.1 (comportamiento del consumidor) ===== */
+
+/* 1. Header con degradado rojo -> naranja brasas (apetito visual) */
+#encabezado {
+  background: linear-gradient(90deg, var(--color-primario), #FF4500);
+}
+
+/* 2. Micro-animaciones (feedback táctil) */
+.tarjeta-producto {
+  transition: transform .15s ease, box-shadow .15s ease;
+  position: relative;
+}
+.tarjeta-producto:active {
+  transform: scale(.98);
+}
+.boton-mas, .boton-agregar {
+  transition: transform .12s ease;
+}
+.boton-mas:active, .boton-agregar:active {
+  transform: scale(.9);
+}
+
+/* 3. Pulso del botón flotante — con box-shadow para NO pisar
+   el transform: translateX(-50%) del centrado en escritorio */
+@keyframes pulso-carrito {
+  0%   { box-shadow: 0 4px 14px rgba(255, 69, 0, 0.4); }
+  50%  { box-shadow: 0 4px 24px rgba(255, 69, 0, 0.9); }
+  100% { box-shadow: 0 4px 14px rgba(255, 69, 0, 0.4); }
+}
+.boton-flotante {
+  animation: pulso-carrito 2s ease-in-out 3;
+}
+
+/* 4. Jerarquía del precio (anclaje) */
+.precio-producto {
+  font-size: 18px;
+}
+
+/* 5. Elevación en escritorio */
+@media (hover: hover) {
+  .tarjeta-producto:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,.12);
+  }
+}
+
+/* 6. Badge de prueba social */
+.badge-destacado {
+  position: absolute;
+  top: -8px;
+  right: 10px;
+  background: #FF4500;
+  color: #FFF;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 5px 10px;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.2);
+  z-index: 10;
 }
