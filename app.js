@@ -1,502 +1,911 @@
-/* ============================================================
-   mi-polleria — estilo.css
-   Diseño mobile-first (sección 11). Sin dependencias externas.
+// ============================================================
+// mi-polleria — app.js (COMPLETO: Orden 3a + Orden 3b)
+// SPA de pedidos en mesa con envío por WhatsApp.
+// Reglas: secciones 3, 5, 7, 8, 10, 11, 12, 16 del SPEC.md
+// Carrito SOLO en memoria. Carga por inyección de script.
+// ============================================================
 
-   Colores del local (sección 4): los valores por defecto son
-   EJEMPLO. app.js sobrescribirá estas variables en runtime con
-   LOCAL.colores (Orden 3). Ninguna regla usa colores fijos del
-   local: siempre se leen de --color-*.
-   ============================================================ */
+(function () {
+  "use strict";
 
-:root {
-  --color-primario: #C8102E; /* EJEMPLO */
-  --color-fondo:    #FFF8F0; /* EJEMPLO */
-  --color-texto:    #222222; /* EJEMPLO */
+  // ---------- Utilidades base ----------
 
-  /* neutros estructurales (no forman parte de la marca) */
-  --superficie:  #FFFFFF;
-  --texto-suave: #666666;
-  --borde-suave: #DDDDDD;
-}
-
-/* Un elemento [hidden] nunca debe mostrarse, aunque otra regla
-   le asigne display. Garantiza "una sola pantalla visible". */
-[hidden] {
-  display: none !important;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-html,
-body {
-  margin: 0;
-  padding: 0;
-}
-
-body {
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-  font-size: 16px; /* tipografía mínima 16px (sección 11) */
-  line-height: 1.4;
-  color: var(--color-texto);
-  background: var(--color-fondo);
-  min-height: 100vh;
-}
-
-/* ---------- Encabezado fijo ---------- */
-#encabezado {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 56px;
-  padding: 8px 12px;
-  background: var(--color-primario);
-  color: #FFFFFF;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-}
-
-#local-info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-#local-logo {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  object-fit: cover;
-  background: rgba(255, 255, 255, 0.2);
-}
-
-#local-nombre {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* El distintivo MESA N es el dato más visible de la pantalla (sección 7) */
-#badge-mesa {
-  background: #FFFFFF;
-  color: var(--color-primario);
-  font-size: 17px;
-  font-weight: 800;
-  line-height: 1;
-  padding: 10px 14px;
-  border-radius: 999px;
-  white-space: nowrap;
-}
-
-#etiqueta-demo {
-  background: rgba(0, 0, 0, 0.35);
-  color: #FFFFFF;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  padding: 6px 10px;
-  border-radius: 6px;
-}
-
-/* ---------- Zona principal ---------- */
-#contenido {
-  padding: 80px 12px 96px; /* hueco para header fijo y botón flotante */
-}
-
-.titulo-pantalla {
-  margin: 4px 0 14px;
-  font-size: 20px;
-  color: var(--color-texto);
-}
-
-/* ---------- Tarjeta de producto ---------- */
-.tarjeta-producto {
-  display: grid;
-  grid-template-columns: 96px 1fr 48px;
-  gap: 10px;
-  align-items: center;
-  background: var(--superficie);
-  border-radius: 14px;
-  padding: 10px;
-  margin-bottom: 12px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
-}
-
-.foto-producto {
-  width: 96px;
-  height: 96px;
-  border-radius: 10px;
-  overflow: hidden;
-  background: var(--borde-suave);
-}
-
-.foto-producto img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-/* Variante sin foto: degradado digno con tipografía clara (sección 16.6).
-   app.js añade la clase .sin-foto y oculta la etiqueta img al fallar la carga. */
-.foto-producto.sin-foto {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, var(--color-primario) 0%, var(--color-texto) 100%);
-  color: #FFFFFF;
-  font-size: 32px;
-  font-weight: 700;
-}
-
-.nombre-producto {
-  margin: 0 0 2px;
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--color-texto);
-}
-
-.incluye-producto {
-  margin: 0 0 4px;
-  font-size: 13px;
-  color: var(--texto-suave);
-}
-
-.precio-producto {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--color-primario);
-}
-
-.boton-mas {
-  width: 48px;
-  height: 48px;
-  border: none;
-  border-radius: 50%;
-  background: var(--color-primario);
-  color: #FFFFFF;
-  font-size: 28px;
-  line-height: 1;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* ---------- Opciones en línea ----------
-   Estructura por opción (la genera app.js):
-   <span class="opcion"><input type="radio" id="..."><label for="...">…</label></span> */
-.opciones-inline {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding-top: 10px;
-  border-top: 1px solid var(--borde-suave);
-}
-
-.opcion {
-  position: relative;
-}
-
-.opcion input[type="radio"] {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.opcion label {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 48px; /* área táctil mínima (sección 11) */
-  padding: 8px 14px;
-  border: 2px solid var(--color-primario);
-  border-radius: 999px;
-  background: var(--superficie);
-  color: var(--color-primario);
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.opcion input:checked + label {
-  background: var(--color-primario);
-  color: #FFFFFF;
-}
-
-.boton-agregar {
-  grid-column: 1 / -1;
-  width: 100%;
-  min-height: 48px;
-  border: none;
-  border-radius: 12px;
-  background: var(--color-primario);
-  color: #FFFFFF;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-/* ---------- Botones generales ---------- */
-.boton-primario,
-.boton-secundario {
-  width: 100%;
-  min-height: 48px;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-  margin-bottom: 10px;
-}
-
-.boton-primario {
-  border: none;
-  background: var(--color-primario);
-  color: #FFFFFF;
-}
-
-.boton-secundario {
-  border: 2px solid var(--color-primario);
-  background: var(--superficie);
-  color: var(--color-primario);
-}
-
-/* ---------- Pantalla de carrito ---------- */
-.linea-carrito {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  background: var(--superficie);
-  border-radius: 12px;
-  padding: 10px;
-  margin-bottom: 10px;
-}
-
-.linea-carrito .nombre-linea {
-  flex: 1 1 130px;
-  font-weight: 700;
-}
-
-.linea-carrito .opciones-linea {
-  flex-basis: 100%;
-  font-size: 13px;
-  color: var(--texto-suave);
-}
-
-.controles-cantidad {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.boton-cantidad {
-  width: 48px;
-  height: 48px;
-  border: 2px solid var(--color-primario);
-  border-radius: 50%;
-  background: var(--superficie);
-  color: var(--color-primario);
-  font-size: 22px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.cantidad {
-  min-width: 24px;
-  text-align: center;
-  font-weight: 700;
-}
-
-.precio-linea {
-  font-weight: 700;
-}
-
-.boton-quitar {
-  min-width: 48px;
-  min-height: 48px;
-  border: none;
-  background: transparent;
-  color: var(--texto-suave);
-  font-size: 15px;
-  text-decoration: underline;
-  cursor: pointer;
-}
-
-.total-carrito {
-  background: var(--superficie);
-  border-radius: 12px;
-  padding: 14px;
-  margin: 12px 0;
-  text-align: right;
-  font-size: 18px;
-  font-weight: 800;
-}
-
-/* ---------- Pantalla de confirmación ---------- */
-.etiqueta-campo {
-  display: block;
-  margin-bottom: 6px;
-  font-weight: 600;
-}
-
-#nota-pedido {
-  width: 100%;
-  min-height: 88px;
-  padding: 10px;
-  border: 1px solid var(--borde-suave);
-  border-radius: 10px;
-  font-family: inherit;
-  font-size: 16px;
-  color: var(--color-texto);
-  background: var(--superficie);
-  resize: vertical;
-}
-
-#contador-nota {
-  text-align: right;
-  font-size: 13px;
-  color: var(--texto-suave);
-  margin: 4px 0 12px;
-}
-
-/* ---------- Pantalla de aviso / cortesía (sección 12) ---------- */
-#pantalla-aviso {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  min-height: 55vh;
-  gap: 16px;
-  padding: 24px 16px;
-}
-
-#aviso-texto {
-  max-width: 340px;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--color-texto);
-}
-
-#aviso-mesa-selector select {
-  min-height: 48px;
-  padding: 8px 12px;
-  border: 2px solid var(--color-primario);
-  border-radius: 10px;
-  background: var(--superficie);
-  color: var(--color-texto);
-  font-size: 16px;
-}
-
-/* ---------- Botón flotante (sección 7) ---------- */
-.boton-flotante {
-  position: fixed;
-  left: 12px;
-  right: 12px;
-  bottom: 12px;
-  z-index: 100;
-  min-height: 56px;
-  border: none;
-  border-radius: 28px;
-  background: var(--color-primario);
-  color: #FFFFFF;
-  font-size: 16px;
-  font-weight: 800;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-  cursor: pointer;
-}
-
-/* ---------- Foco visible (accesibilidad) ---------- */
-button:focus-visible,
-textarea:focus,
-select:focus {
-  outline: 3px solid var(--color-primario);
-  outline-offset: 2px;
-}
-
-/* ---------- Pantallas medianas/grandes ---------- */
-@media (min-width: 768px) {
-  #contenido {
-    max-width: 680px;
-    margin: 0 auto;
+  function $(id) {
+    return document.getElementById(id);
   }
 
-  .boton-flotante {
-    left: 50%;
-    transform: translateX(-50%);
-    max-width: 560px;
+  function mostrarPantalla(nombre) {
+    // Solo una pantalla visible a la vez (sección 7)
+    var pantallas = [
+      "pantalla-lista",
+      "pantalla-carrito",
+      "pantalla-confirmacion",
+      "pantalla-aviso"
+    ];
+
+    pantallas.forEach(function (p) {
+      $(p).hidden = (p !== nombre);
+    });
+
+    // El botón flotante solo se muestra en la pantalla de lista (sección 7)
+    $("boton-ver-pedido").hidden = (nombre !== "pantalla-lista");
   }
 
-/* ===== MEJORAS VISUALES v1.1 (comportamiento del consumidor) ===== */
-
-/* 1. Header con degradado rojo -> naranja brasas (apetito visual) */
-#encabezado {
-  background: linear-gradient(90deg, var(--color-primario), #FF4500);
-}
-
-/* 2. Micro-animaciones (feedback táctil) */
-.tarjeta-producto {
-  transition: transform .15s ease, box-shadow .15s ease;
-  position: relative;
-}
-.tarjeta-producto:active {
-  transform: scale(.98);
-}
-.boton-mas, .boton-agregar {
-  transition: transform .12s ease;
-}
-.boton-mas:active, .boton-agregar:active {
-  transform: scale(.9);
-}
-
-/* 3. Pulso del botón flotante — con box-shadow para NO pisar
-   el transform: translateX(-50%) del centrado en escritorio */
-@keyframes pulso-carrito {
-  0%   { box-shadow: 0 4px 14px rgba(255, 69, 0, 0.4); }
-  50%  { box-shadow: 0 4px 24px rgba(255, 69, 0, 0.9); }
-  100% { box-shadow: 0 4px 14px rgba(255, 69, 0, 0.4); }
-}
-.boton-flotante {
-  animation: pulso-carrito 2s ease-in-out 3;
-}
-
-/* 4. Jerarquía del precio (anclaje) */
-.precio-producto {
-  font-size: 18px;
-}
-
-/* 5. Elevación en escritorio */
-@media (hover: hover) {
-  .tarjeta-producto:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,.12);
+  function mostrarAviso(texto) {
+    // Pantalla de cortesía (sección 12): jamás pantalla en blanco
+    $("aviso-texto").textContent = texto;
+    $("aviso-mesa-selector").hidden = true;
+    mostrarPantalla("pantalla-aviso");
   }
-}
 
-/* 6. Badge de prueba social */
-.badge-destacado {
-  position: absolute;
-  top: -8px;
-  right: 10px;
-  background: #FF4500;
-  color: #FFF;
-  font-size: 11px;
-  font-weight: 800;
-  padding: 5px 10px;
-  border-radius: 999px;
-  box-shadow: 0 2px 6px rgba(0,0,0,.2);
-  z-index: 10;
-}
+  // ---------- Estado global (en memoria; PROHIBIDO localStorage) ----------
+
+  var LOCAL = null;
+  var mesaActual = null;
+  var carrito = [];
+
+  // ---------- Lectura de la URL (sección 3) ----------
+
+  function leerParametros() {
+    var params = new URLSearchParams(window.location.search);
+
+    return {
+      local: params.get("local"),
+      mesa: params.get("mesa")
+    };
+  }
+
+  // ---------- Selector de mesa cuando falta (sección 3 y 12) ----------
+
+  function mostrarSelectorMesa() {
+    var cont = $("aviso-mesa-selector");
+
+    cont.innerHTML = "";
+    cont.hidden = false;
+
+    $("aviso-texto").textContent =
+      "Elige tu mesa para continuar:";
+
+    var select = document.createElement("select");
+    select.id = "selector-mesa";
+
+    var opcionVacia = document.createElement("option");
+    opcionVacia.value = "";
+    opcionVacia.textContent = "— Elige tu mesa —";
+    select.appendChild(opcionVacia);
+
+    for (var i = 1; i <= 30; i++) {
+      var op = document.createElement("option");
+
+      op.value = String(i);
+      op.textContent = "Mesa " + i;
+
+      select.appendChild(op);
+    }
+
+    select.addEventListener("change", function () {
+      if (select.value !== "") {
+        mesaActual = parseInt(select.value, 10);
+
+        $("mesa-numero").textContent = String(mesaActual);
+        $("badge-mesa").hidden = false;
+
+        renderMenu();
+      }
+    });
+
+    cont.appendChild(select);
+  }
+
+  // ---------- Carga del archivo de datos (secciones 16.1, 16.2, 16.3) ----------
+  // Inyección dinámica de <script>. PROHIBIDO fetch / XMLHttpRequest.
+
+  function cargarDatos(localId, alCargarBien, alFallar) {
+    var ruta = (localId === "demo")
+      ? "menu.js"
+      : "clientes/" + localId + ".js";
+
+    var script = document.createElement("script");
+    script.src = ruta;
+
+    // Caso a): el archivo no se encuentra o no se puede cargar.
+    // Sección 12: informar que el local no es válido.
+    script.onerror = function () {
+      alFallar(
+        "Local no válido. Escanea el QR de tu mesa."
+      );
+    };
+
+    // Caso b): el archivo se carga, pero LOCAL no es válido,
+    // el menú está vacío o falta su estructura principal.
+    script.onload = function () {
+      if (
+        typeof window.LOCAL === "undefined" ||
+        !window.LOCAL ||
+        !window.LOCAL.menu ||
+        window.LOCAL.menu.length === 0
+      ) {
+        alFallar();
+        return;
+      }
+
+      LOCAL = window.LOCAL;
+      alCargarBien();
+    };
+
+    // Limpiar cualquier resto de una carga anterior (robustez 16.2)
+    try {
+      delete window.LOCAL;
+    } catch (e) {
+      window.LOCAL = undefined;
+    }
+
+    document.body.appendChild(script);
+  }
+
+  // ---------- Aplicar configuración del local (sección 4 y 11) ----------
+
+  function aplicarConfiguracionLocal() {
+    // Colores desde LOCAL.colores a las variables CSS.
+    // Los colores llegan desde el archivo de datos del local.
+    var raiz = document.documentElement.style;
+
+    if (LOCAL.colores) {
+      if (LOCAL.colores.primario) {
+        raiz.setProperty(
+          "--color-primario",
+          LOCAL.colores.primario
+        );
+      }
+
+      if (LOCAL.colores.fondo) {
+        raiz.setProperty(
+          "--color-fondo",
+          LOCAL.colores.fondo
+        );
+      }
+
+      if (LOCAL.colores.texto) {
+        raiz.setProperty(
+          "--color-texto",
+          LOCAL.colores.texto
+        );
+      }
+    }
+
+    // Nombre y logo del local en el encabezado.
+    $("local-nombre").textContent = LOCAL.nombre || "";
+
+    if (LOCAL.logoUrl) {
+      $("local-logo").src = LOCAL.logoUrl;
+      $("local-logo").hidden = false;
+    }
+
+    // Etiqueta DEMO (sección 16.3).
+    if (LOCAL.id === "demo") {
+      $("etiqueta-demo").hidden = false;
+    }
+
+    // Indicador de mesa, si ya se conoce.
+    if (mesaActual !== null) {
+      $("mesa-numero").textContent = String(mesaActual);
+      $("badge-mesa").hidden = false;
+    }
+  }
+
+  // ============================================================
+  // MOTOR: MENÚ, CARRITO, CONFIRMACIÓN Y WHATSAPP (Orden 3b)
+  // Secciones 5, 7, 8 y 10 del SPEC.md
+  // ============================================================
+
+  // ---------- Lógica de precios (sección 8): TODO en centavos ----------
+
+  function aCentavos(precio) {
+    return Math.round(precio * 100);
+  }
+
+  function formatearSoles(centavos) {
+    return "S/ " + (centavos / 100).toFixed(2);
+  }
+
+  // Precio más bajo de un producto con opciones,
+  // para mostrar "desde S/ X.XX".
+  function precioBaseItem(item) {
+    if (item.opciones && item.opciones.length > 0) {
+      var precios = [];
+
+      item.opciones.forEach(function (op) {
+        op.choices.forEach(function (ch) {
+          if (typeof ch.precio === "number") {
+            precios.push(aCentavos(ch.precio));
+          }
+        });
+      });
+
+      if (precios.length > 0) {
+        return Math.min.apply(null, precios);
+      }
+    }
+
+    return aCentavos(item.precio);
+  }
+
+  // Precio de una selección: procede de los datos.
+  // Si varios grupos tienen precios definidos, se suman.
+  function precioDeSeleccion(item, seleccion) {
+    var precio = 0;
+    var tienePrecio = false;
+
+    (item.opciones || []).forEach(function (op) {
+      var elegida = (
+        seleccion &&
+        seleccion[op.tipo] !== undefined
+      )
+        ? seleccion[op.tipo]
+        : op.choices[0].nombre;
+
+      (op.choices || []).forEach(function (ch) {
+        if (
+          ch.nombre === elegida &&
+          typeof ch.precio === "number"
+        ) {
+          precio += aCentavos(ch.precio);
+          tienePrecio = true;
+        }
+      });
+    });
+
+    if (!tienePrecio) {
+      return aCentavos(item.precio);
+    }
+
+    return precio;
+  }
+
+  // ---------- Carrito en memoria (prohibido localStorage, sección 7) ----------
+
+  function claveLinea(itemId, seleccion) {
+    // Mismo producto + mismas opciones = una sola línea.
+    var partes = [itemId];
+
+    Object.keys(seleccion || {}).sort().forEach(function (k) {
+      partes.push(k + "=" + seleccion[k]);
+    });
+
+    return partes.join("|");
+  }
+
+  function agregarAlCarrito(item, seleccion, precioCentavos) {
+    var clave = claveLinea(item.id, seleccion);
+
+    for (var i = 0; i < carrito.length; i++) {
+      if (carrito[i].clave === clave) {
+        carrito[i].cantidad++;
+
+        renderCarrito();
+        actualizarBotonFlotante();
+
+        return;
+      }
+    }
+
+    var etiquetaOpciones = Object.keys(seleccion || {})
+      .map(function (k) {
+        return seleccion[k];
+      })
+      .join(", ");
+
+    carrito.push({
+      clave: clave,
+      itemId: item.id,
+      nombre: item.nombre,
+      opcionesLabel: etiquetaOpciones,
+      incluye: item.incluye || null,
+      precioCentavos: precioCentavos,
+      cantidad: 1
+    });
+
+    renderCarrito();
+    actualizarBotonFlotante();
+  }
+
+  function totalCarritoCentavos() {
+    var total = 0;
+
+    carrito.forEach(function (l) {
+      total += l.precioCentavos * l.cantidad;
+    });
+
+    return total;
+  }
+
+  function cantidadCarrito() {
+    var n = 0;
+
+    carrito.forEach(function (l) {
+      n += l.cantidad;
+    });
+
+    return n;
+  }
+
+  function actualizarBotonFlotante() {
+    $("boton-ver-pedido").textContent =
+      "Ver pedido (" +
+      cantidadCarrito() +
+      ") — " +
+      formatearSoles(totalCarritoCentavos());
+  }
+
+  // ---------- Renderizado del menú (secciones 5 y 7) ----------
+
+  function renderMenu() {
+    var cont = $("lista-menu");
+
+    cont.innerHTML = "";
+
+    LOCAL.menu.forEach(function (categoria) {
+      var h = document.createElement("h2");
+
+      h.className = "titulo-pantalla";
+      h.textContent = categoria.categoria;
+
+      cont.appendChild(h);
+
+      categoria.items.forEach(function (item) {
+        cont.appendChild(crearTarjeta(item));
+      });
+    });
+
+    mostrarPantalla("pantalla-lista");
+    actualizarBotonFlotante();
+  }
+
+  function activarSinFoto(contFoto, nombre) {
+    // Variante sin foto: jamás mostrar una imagen rota.
+    contFoto.classList.add("sin-foto");
+    contFoto.textContent = nombre.charAt(0).toUpperCase();
+  }
+
+  function crearTarjeta(item) {
+    var tieneOpciones =
+      item.opciones &&
+      item.opciones.length > 0;
+
+    var tarjeta = document.createElement("div");
+    tarjeta.className = "tarjeta-producto";
+
+    // Badge de prueba social (solo si el item define 'destacado')
+    if (item.destacado) {
+      var badge = document.createElement("span");
+      badge.className = "badge-destacado";
+      badge.textContent = item.destacado;
+      tarjeta.appendChild(badge);
+    }
+
+    // Foto opcional, carga diferida y texto alternativo.
+    var contFoto = document.createElement("div");
+    contFoto.className = "foto-producto";
+
+    if (item.fotoUrl) {
+      var img = document.createElement("img");
+
+      img.src = item.fotoUrl;
+      img.alt = item.nombre;
+      img.loading = "lazy";
+      img.width = 500;
+      img.height = 500;
+
+      img.onerror = function () {
+        img.remove();
+        activarSinFoto(contFoto, item.nombre);
+      };
+
+      contFoto.appendChild(img);
+    } else {
+      activarSinFoto(contFoto, item.nombre);
+    }
+
+    tarjeta.appendChild(contFoto);
+
+    // Textos del producto.
+    var info = document.createElement("div");
+    var nombre = document.createElement("p");
+
+    nombre.className = "nombre-producto";
+    nombre.textContent = item.nombre;
+
+    info.appendChild(nombre);
+
+    if (item.incluye && item.incluye.length > 0) {
+      var inc = document.createElement("p");
+
+      inc.className = "incluye-producto";
+      inc.textContent =
+        "Incluye: " +
+        item.incluye.join(", ");
+
+      info.appendChild(inc);
+    }
+
+    var precio = document.createElement("p");
+    precio.className = "precio-producto";
+
+    precio.textContent = tieneOpciones
+      ? "desde " + formatearSoles(precioBaseItem(item))
+      : formatearSoles(aCentavos(item.precio));
+
+    info.appendChild(precio);
+    tarjeta.appendChild(info);
+
+    // Botón para añadir productos.
+    var boton = document.createElement("button");
+
+    boton.type = "button";
+    boton.className = "boton-mas";
+    boton.textContent = "+";
+
+    tarjeta.appendChild(boton);
+
+    // Producto sin opciones: agregar directamente.
+    if (!tieneOpciones) {
+      boton.addEventListener("click", function () {
+        agregarAlCarrito(
+          item,
+          {},
+          aCentavos(item.precio)
+        );
+      });
+
+      return tarjeta;
+    }
+
+    // Producto con opciones: mostrar panel de selección.
+    boton.addEventListener("click", function () {
+      var existente = tarjeta.querySelector(".opciones-inline");
+
+      if (existente) {
+        existente.remove();
+        boton.textContent = "+";
+        return;
+      }
+
+      var panel = document.createElement("div");
+      panel.className = "opciones-inline";
+
+      var seleccion = {};
+
+      item.opciones.forEach(function (op, indiceOp) {
+        var nombreUnico =
+          "op-" +
+          item.id +
+          "-" +
+          indiceOp +
+          "-" +
+          Date.now();
+
+        op.choices.forEach(function (ch, indiceCh) {
+          var wrap = document.createElement("span");
+          wrap.className = "opcion";
+
+          var radio = document.createElement("input");
+
+          radio.type = "radio";
+          radio.name = nombreUnico;
+          radio.value = ch.nombre;
+          radio.id =
+            nombreUnico +
+            "-" +
+            indiceCh;
+
+          // Primera opción seleccionada por defecto.
+          if (indiceCh === 0) {
+            radio.checked = true;
+            seleccion[op.tipo] = ch.nombre;
+          }
+
+          var label = document.createElement("label");
+
+          label.htmlFor = radio.id;
+          label.textContent = ch.nombre;
+
+          radio.addEventListener("change", function () {
+            seleccion[op.tipo] = ch.nombre;
+
+            botonAgregar.textContent =
+              "Agregar — " +
+              formatearSoles(
+                precioDeSeleccion(item, seleccion)
+              );
+          });
+
+          wrap.appendChild(radio);
+          wrap.appendChild(label);
+
+          panel.appendChild(wrap);
+        });
+      });
+
+      var botonAgregar = document.createElement("button");
+
+      botonAgregar.type = "button";
+      botonAgregar.className = "boton-agregar";
+
+      botonAgregar.textContent =
+        "Agregar — " +
+        formatearSoles(
+          precioDeSeleccion(item, seleccion)
+        );
+
+      botonAgregar.addEventListener("click", function () {
+        agregarAlCarrito(
+          item,
+          seleccion,
+          precioDeSeleccion(item, seleccion)
+        );
+
+        panel.remove();
+        boton.textContent = "+";
+      });
+
+      panel.appendChild(botonAgregar);
+      tarjeta.appendChild(panel);
+
+      boton.textContent = "×";
+    });
+
+    return tarjeta;
+  }
+
+  // ---------- Renderizado del carrito (sección 7) ----------
+
+  function renderCarrito() {
+    var cont = $("lineas-carrito");
+
+    cont.innerHTML = "";
+
+    if (carrito.length === 0) {
+      cont.innerHTML =
+        "<p>Tu pedido está vacío. Agrega productos desde el menú.</p>";
+    }
+
+    carrito.forEach(function (linea, indice) {
+      var fila = document.createElement("div");
+      fila.className = "linea-carrito";
+
+      var nombre = document.createElement("span");
+
+      nombre.className = "nombre-linea";
+      nombre.textContent =
+        linea.cantidad +
+        "x " +
+        linea.nombre;
+
+      fila.appendChild(nombre);
+
+      if (linea.opcionesLabel) {
+        var ops = document.createElement("span");
+
+        ops.className = "opciones-linea";
+        ops.textContent =
+          "(" +
+          linea.opcionesLabel +
+          ")";
+
+        fila.appendChild(ops);
+      }
+
+      var controles = document.createElement("div");
+      controles.className = "controles-cantidad";
+
+      var menos = document.createElement("button");
+
+      menos.type = "button";
+      menos.className = "boton-cantidad";
+      menos.textContent = "−";
+
+      menos.addEventListener("click", function () {
+        if (linea.cantidad > 1) {
+          linea.cantidad--;
+        } else {
+          carrito.splice(indice, 1);
+        }
+
+        renderCarrito();
+        actualizarBotonFlotante();
+      });
+
+      var cant = document.createElement("span");
+
+      cant.className = "cantidad";
+      cant.textContent = String(linea.cantidad);
+
+      var mas = document.createElement("button");
+
+      mas.type = "button";
+      mas.className = "boton-cantidad";
+      mas.textContent = "+";
+
+      mas.addEventListener("click", function () {
+        linea.cantidad++;
+
+        renderCarrito();
+        actualizarBotonFlotante();
+      });
+
+      controles.appendChild(menos);
+      controles.appendChild(cant);
+      controles.appendChild(mas);
+
+      fila.appendChild(controles);
+
+      var precioLinea = document.createElement("span");
+
+      precioLinea.className = "precio-linea";
+      precioLinea.textContent =
+        formatearSoles(
+          linea.precioCentavos *
+          linea.cantidad
+        );
+
+      fila.appendChild(precioLinea);
+
+      var quitar = document.createElement("button");
+
+      quitar.type = "button";
+      quitar.className = "boton-quitar";
+      quitar.textContent = "quitar";
+
+      quitar.addEventListener("click", function () {
+        carrito.splice(indice, 1);
+
+        renderCarrito();
+        actualizarBotonFlotante();
+      });
+
+      fila.appendChild(quitar);
+      cont.appendChild(fila);
+    });
+
+    $("total-carrito").textContent =
+      "TOTAL: " +
+      formatearSoles(totalCarritoCentavos());
+  }
+
+  // ---------- Pantalla de confirmación (sección 7) ----------
+
+  function renderConfirmacion() {
+    var cont = $("resumen-confirmacion");
+
+    cont.innerHTML = "";
+
+    var mesa = document.createElement("p");
+
+    mesa.textContent = "MESA " + mesaActual;
+    cont.appendChild(mesa);
+
+    carrito.forEach(function (linea) {
+      var p = document.createElement("p");
+
+      p.textContent =
+        linea.cantidad +
+        "x " +
+        linea.nombre +
+        (linea.opcionesLabel
+          ? " (" + linea.opcionesLabel + ")"
+          : "") +
+        " — " +
+        formatearSoles(
+          linea.precioCentavos *
+          linea.cantidad
+        );
+
+      cont.appendChild(p);
+    });
+
+    var total = document.createElement("p");
+
+    total.style.fontWeight = "800";
+    total.textContent =
+      "TOTAL: " +
+      formatearSoles(totalCarritoCentavos());
+
+    cont.appendChild(total);
+
+    // Nota general opcional: máximo 80 caracteres.
+    var nota = $("nota-pedido");
+
+    nota.value = "";
+    $("contador-nota").textContent = "0/80";
+
+    nota.oninput = function () {
+      $("contador-nota").textContent =
+        nota.value.length + "/80";
+    };
+
+    mostrarPantalla("pantalla-confirmacion");
+  }
+
+  // ---------- Mensaje de WhatsApp (sección 10) ----------
+
+  function generarMensajeWhatsApp() {
+    var lineas = [];
+
+    lineas.push(
+      "🛒 *NUEVO PEDIDO — " +
+      LOCAL.nombre +
+      "*"
+    );
+
+    lineas.push(
+      "📌 *MESA " +
+      mesaActual +
+      "*"
+    );
+
+    carrito.forEach(function (linea) {
+      var texto =
+        linea.cantidad +
+        "x " +
+        linea.nombre;
+
+      if (linea.opcionesLabel) {
+        texto +=
+          " (" +
+          linea.opcionesLabel +
+          ")";
+      }
+
+      texto +=
+        " — " +
+        formatearSoles(
+          linea.precioCentavos *
+          linea.cantidad
+        );
+
+      if (linea.incluye) {
+        texto +=
+          " + " +
+          linea.incluye.join(", ");
+      }
+
+      lineas.push(texto);
+    });
+
+    lineas.push(
+      "💰 *TOTAL: " +
+      formatearSoles(totalCarritoCentavos()) +
+      "*"
+    );
+
+    var nota = $("nota-pedido").value.trim();
+
+    if (nota !== "") {
+      lineas.push("📝 Nota: " + nota);
+    }
+
+    return lineas.join("\n");
+  }
+
+  function enviarWhatsApp() {
+    var mensaje = generarMensajeWhatsApp();
+    var codificado = encodeURIComponent(mensaje);
+
+    // Móvil: wa.me | Escritorio: WhatsApp Web.
+    var esMovil =
+      /Android|iPhone|iPad|iPod|Mobile/i.test(
+        navigator.userAgent
+      );
+
+    var url;
+
+    if (esMovil) {
+      url =
+        "https://wa.me/" +
+        LOCAL.whatsappCaja +
+        "?text=" +
+        codificado;
+    } else {
+      url =
+        "https://web.whatsapp.com/send?phone=" +
+        LOCAL.whatsappCaja +
+        "&text=" +
+        codificado;
+    }
+
+    // El cliente presiona Enviar manualmente.
+    window.location.href = url;
+  }
+
+  // ---------- Conexión de botones (pantallas 7) ----------
+
+  document.addEventListener("DOMContentLoaded", function () {
+    $("boton-ver-pedido").addEventListener("click", function () {
+      if (carrito.length > 0) {
+        renderCarrito();
+        mostrarPantalla("pantalla-carrito");
+      }
+    });
+
+    $("boton-volver-lista").addEventListener("click", function () {
+      mostrarPantalla("pantalla-lista");
+    });
+
+    $("boton-confirmar").addEventListener("click", function () {
+      if (carrito.length > 0) {
+        renderConfirmacion();
+      }
+    });
+
+    $("boton-editar-pedido").addEventListener("click", function () {
+      renderCarrito();
+      mostrarPantalla("pantalla-carrito");
+    });
+
+    $("boton-enviar-whatsapp").addEventListener(
+      "click",
+      enviarWhatsApp
+    );
+  });
+
+  // ---------- Arranque (Orden 3a) ----------
+
+  function iniciar() {
+    var params = leerParametros();
+
+    // 1) Sin identificador del local: mostrar aviso correspondiente.
+    if (!params.local) {
+      mostrarAviso(
+        "Local no válido. Escanea el QR de tu mesa."
+      );
+      return;
+    }
+
+    // 2) La mesa debe ser un entero entre 1 y 30.
+    var mesaUrl = Number(params.mesa);
+
+    if (
+      params.mesa !== null &&
+      Number.isInteger(mesaUrl) &&
+      mesaUrl >= 1 &&
+      mesaUrl <= 30
+    ) {
+      mesaActual = mesaUrl;
+    }
+
+    // 3) Cargar los datos y distinguir los tipos de fallo.
+    cargarDatos(
+      params.local,
+
+      function alCargarBien() {
+        // Si los datos están mal estructurados y el menú falla
+        // durante el arranque, mostrar la pantalla de cortesía.
+        try {
+          aplicarConfiguracionLocal();
+
+          if (mesaActual === null) {
+            mostrarSelectorMesa();
+          } else {
+            renderMenu();
+          }
+        } catch (e) {
+          mostrarAviso(
+            "El menú no está disponible en este momento. Pide la carta al mozo."
+          );
+        }
+      },
+
+      function alFallar(mensaje) {
+        // Si no se proporciona un mensaje específico, se considera
+        // que el archivo existe, pero el menú no es válido.
+        mostrarAviso(
+          mensaje ||
+          "El menú no está disponible en este momento. Pide la carta al mozo."
+        );
+      }
+    );
+  }
+
+  document.addEventListener("DOMContentLoaded", iniciar);
+
+})();
