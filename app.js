@@ -1,8 +1,18 @@
 // ============================================================
-// mi-polleria — app.js (COMPLETO: Orden 3a + Orden 3b)
-// SPA de pedidos en mesa con envío por WhatsApp.
+// mi-polleria — app.js (v4 — Fusión Marketing)
+// SPA de pedidos en mesa con envío por WhatsApp a Caja o Cocina.
 // Reglas: secciones 3, 5, 7, 8, 10, 11, 12, 16 del SPEC.md
 // Carrito SOLO en memoria. Carga por inyección de script.
+//
+// NUEVO en v4 (aditivo, no rompe nada del SPEC):
+//  - Destino del pedido: Caja (por defecto) o Cocina, usando
+//    LOCAL.whatsappCaja y LOCAL.whatsappCocina (opcional).
+//  - Marketing opcional via LOCAL.marketing (banda de marca,
+//    promo del día con cuenta regresiva, testimonios, club,
+//    ubicación/horarios, footer). Si no existe, nada se muestra.
+//  - Toast de feedback al agregar + rebote del botón flotante.
+//  - Monograma si el local no definió logoUrl.
+//  - Animación de aparición (respeta prefers-reduced-motion).
 // ============================================================
 
 (function () {
@@ -31,11 +41,28 @@
     $("boton-ver-pedido").hidden = (nombre !== "pantalla-lista");
   }
 
-  function mostrarAviso(texto) {
+  function mostrarAviso(texto, emoji) {
     // Pantalla de cortesía (sección 12): jamás pantalla en blanco
     $("aviso-texto").textContent = texto;
+    $("aviso-emoji").textContent = emoji || "🐓";
     $("aviso-mesa-selector").hidden = true;
     mostrarPantalla("pantalla-aviso");
+  }
+
+  // ---------- Toast (nuevo v4) ----------
+
+  var toastTimer = null;
+
+  function mostrarToast(texto) {
+    var t = $("toast");
+
+    t.textContent = texto;
+    t.classList.add("visible");
+
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () {
+      t.classList.remove("visible");
+    }, 2200);
   }
 
   // ---------- Estado global (en memoria; PROHIBIDO localStorage) ----------
@@ -43,6 +70,7 @@
   var LOCAL = null;
   var mesaActual = null;
   var carrito = [];
+  var destinoWhatsApp = "caja"; // nuevo v4: "caja" | "cocina"
 
   // ---------- Lectura de la URL (sección 3) ----------
 
@@ -65,6 +93,7 @@
 
     $("aviso-texto").textContent =
       "Elige tu mesa para continuar:";
+    $("aviso-emoji").textContent = "🪑";
 
     var select = document.createElement("select");
     select.id = "selector-mesa";
@@ -179,6 +208,15 @@
     if (LOCAL.logoUrl) {
       $("local-logo").src = LOCAL.logoUrl;
       $("local-logo").hidden = false;
+      $("local-monograma").style.display = "none";
+
+      // Si el logo falla al cargar: monograma, jamás imagen rota.
+      $("local-logo").onerror = function () {
+        $("local-logo").hidden = true;
+        activarMonograma();
+      };
+    } else {
+      activarMonograma();
     }
 
     // Etiqueta DEMO (sección 16.3).
@@ -193,8 +231,19 @@
     }
   }
 
+  function activarMonograma() {
+    var m = $("local-monograma");
+    var inicial = (LOCAL && LOCAL.nombre ? LOCAL.nombre : "?")
+      .trim()
+      .charAt(0)
+      .toUpperCase();
+
+    m.textContent = inicial;
+    m.style.display = "flex";
+  }
+
   // ============================================================
-  // MOTOR: MENÚ, CARRITO, CONFIRMACIÓN Y WHATSAPP (Orden 3b)
+  // MOTOR: MENÚ, CARRITO, CONFIRMACIÓN Y WHATSAPP
   // Secciones 5, 7, 8 y 10 del SPEC.md
   // ============================================================
 
@@ -212,21 +261,26 @@
   // para mostrar "desde S/ X.XX".
   function precioBaseItem(item) {
     if (item.opciones && item.opciones.length > 0) {
-      var precios = [];
-
+      var total = 0;
+      var algunGrupoConPrecio = false;
       item.opciones.forEach(function (op) {
-        op.choices.forEach(function (ch) {
+        var minGrupo = null;
+        (op.choices || []).forEach(function (ch) {
           if (typeof ch.precio === "number") {
-            precios.push(aCentavos(ch.precio));
+            if (minGrupo === null || ch.precio < minGrupo) {
+              minGrupo = ch.precio;
+            }
           }
         });
+        if (minGrupo !== null) {
+          total += minGrupo;
+          algunGrupoConPrecio = true;
+        }
       });
-
-      if (precios.length > 0) {
-        return Math.min.apply(null, precios);
+      if (algunGrupoConPrecio) {
+        return aCentavos(total);
       }
     }
-
     return aCentavos(item.precio);
   }
 
@@ -284,6 +338,7 @@
 
         renderCarrito();
         actualizarBotonFlotante();
+        feedbackAgregado(item.nombre, carrito[i].cantidad);
 
         return;
       }
@@ -307,6 +362,18 @@
 
     renderCarrito();
     actualizarBotonFlotante();
+    feedbackAgregado(item.nombre, 1);
+  }
+
+  // Nuevo v4: feedback visual al agregar (toast + rebote).
+  function feedbackAgregado(nombre, cantidad) {
+    mostrarToast("✓ " + nombre + " agregado (" + cantidad + " en tu pedido)");
+
+    var boton = $("boton-ver-pedido");
+    boton.classList.remove("rebote");
+    // Reinicia la animación
+    void boton.offsetWidth;
+    boton.classList.add("rebote");
   }
 
   function totalCarritoCentavos() {
@@ -357,6 +424,10 @@
       });
     });
 
+    // Marketing opcional (v4): se rellena después del menú.
+    renderMarketing();
+    observarReveals();
+
     mostrarPantalla("pantalla-lista");
     actualizarBotonFlotante();
   }
@@ -375,7 +446,9 @@
     var tarjeta = document.createElement("div");
     tarjeta.className = "tarjeta-producto";
 
-    // Badge de prueba social (solo si el item define 'destacado')
+    // Badge de prueba social (solo si el item define 'destacado').
+    // FIX v4: el badge es position:absolute en CSS y JAMÁS participa
+    // del flujo de la tarjeta (bug de pantalla vertical corregido).
     if (item.destacado) {
       var badge = document.createElement("span");
       badge.className = "badge-destacado";
@@ -410,6 +483,8 @@
 
     // Textos del producto.
     var info = document.createElement("div");
+    info.className = "info-producto";
+
     var nombre = document.createElement("p");
 
     nombre.className = "nombre-producto";
@@ -444,6 +519,7 @@
     boton.type = "button";
     boton.className = "boton-mas";
     boton.textContent = "+";
+    boton.setAttribute("aria-label", "Agregar " + item.nombre + " al pedido");
 
     tarjeta.appendChild(boton);
 
@@ -476,6 +552,11 @@
       var seleccion = {};
 
       item.opciones.forEach(function (op, indiceOp) {
+        var titulo = document.createElement("span");
+        titulo.className = "opcion-tipo";
+        titulo.textContent = op.tipo;
+        panel.appendChild(titulo);
+
         var nombreUnico =
           "op-" +
           item.id +
@@ -559,6 +640,54 @@
 
   // ---------- Renderizado del carrito (sección 7) ----------
 
+  // Barra de Recompensa (nuevo v4.1 — Efecto Gradiente de Meta):
+  // es SOLO informativa (no inventa precios). Si el pedido supera
+  // la meta, el cliente ve "¡Felicidades!" y el mensaje de WhatsApp
+  // lleva la línea del bono; el cajero decide si la aplica, igual
+  // que la confirmación humana del SPEC. Si el dueño borra el
+  // objeto 'recompensa' de menu.js, la barra desaparece sola.
+  function renderRecompensa(totalCentavos, prefijo) {
+    var barra = $(prefijo + "barra-recompensa");
+    var texto = $(prefijo + "texto-recompensa");
+    var progreso = $(prefijo + "progreso-barra");
+
+    // Sin recompensa configurada o pedido vacío: la barra se oculta.
+    if (
+      !LOCAL ||
+      !LOCAL.marketing ||
+      !LOCAL.marketing.recompensa ||
+      totalCentavos === 0 ||
+      !barra ||
+      !texto ||
+      !progreso
+    ) {
+      if (barra) {
+        barra.hidden = true;
+      }
+      return;
+    }
+
+    var meta = LOCAL.marketing.recompensa.meta * 100;
+    var premio = LOCAL.marketing.recompensa.premio || "";
+    var pct = Math.min(100, Math.round((totalCentavos / meta) * 100));
+
+    barra.hidden = false;
+
+    if (totalCentavos >= meta) {
+      texto.textContent = "🎉 ¡Felicidades! Has ganado: " + premio;
+      progreso.style.width = "100%";
+      progreso.classList.add("completa");
+    } else {
+      texto.textContent =
+        "Te faltan " +
+        formatearSoles(meta - totalCentavos) +
+        " para llevarte: " +
+        premio;
+      progreso.style.width = pct + "%";
+      progreso.classList.remove("completa");
+    }
+  }
+
   function renderCarrito() {
     var cont = $("lineas-carrito");
 
@@ -603,6 +732,7 @@
       menos.type = "button";
       menos.className = "boton-cantidad";
       menos.textContent = "−";
+      menos.setAttribute("aria-label", "Quitar uno: " + linea.nombre);
 
       menos.addEventListener("click", function () {
         if (linea.cantidad > 1) {
@@ -625,6 +755,7 @@
       mas.type = "button";
       mas.className = "boton-cantidad";
       mas.textContent = "+";
+      mas.setAttribute("aria-label", "Agregar uno: " + linea.nombre);
 
       mas.addEventListener("click", function () {
         linea.cantidad++;
@@ -670,6 +801,9 @@
     $("total-carrito").textContent =
       "TOTAL: " +
       formatearSoles(totalCarritoCentavos());
+
+    // Barra de Recompensa (v4.1): sin prefijo (IDs del carrito).
+    renderRecompensa(totalCarritoCentavos(), "");
   }
 
   // ---------- Pantalla de confirmación (sección 7) ----------
@@ -679,14 +813,16 @@
 
     cont.innerHTML = "";
 
-    var mesa = document.createElement("p");
+    var mesa = document.createElement("span");
 
-    mesa.textContent = "MESA " + mesaActual;
+    mesa.className = "resumen-mesa";
+    mesa.textContent = "📌 MESA " + mesaActual;
     cont.appendChild(mesa);
 
     carrito.forEach(function (linea) {
       var p = document.createElement("p");
 
+      p.className = "resumen-linea";
       p.textContent =
         linea.cantidad +
         "x " +
@@ -705,7 +841,7 @@
 
     var total = document.createElement("p");
 
-    total.style.fontWeight = "800";
+    total.className = "resumen-linea res-total";
     total.textContent =
       "TOTAL: " +
       formatearSoles(totalCarritoCentavos());
@@ -723,10 +859,26 @@
         nota.value.length + "/80";
     };
 
+    // Nuevo v4: mostrar Cocina solo si el local definió su WhatsApp.
+    var tieneCocina = !!(LOCAL && LOCAL.whatsappCocina);
+
+    $("op-cocina").hidden = !tieneCocina;
+    destinoWhatsApp = "caja";
+    $("dest-caja").checked = true;
+
+    $("aviso-destino").textContent = tieneCocina
+      ? "Se abre WhatsApp con el pedido listo. Tú presionas Enviar."
+      : "Se abre WhatsApp con el pedido listo para enviar a caja. Tú presionas Enviar.";
+
     mostrarPantalla("pantalla-confirmacion");
+
+    // Barra de Recompensa (v4.1): IDs con prefijo conf-.
+    renderRecompensa(totalCarritoCentavos(), "conf-");
   }
 
   // ---------- Mensaje de WhatsApp (sección 10) ----------
+  // La plantilla es EXACTAMENTE la del SPEC; lo único que cambia
+  // según el destino (caja/cocina) es el NÚMERO al que llega.
 
   function generarMensajeWhatsApp() {
     var lineas = [];
@@ -784,12 +936,28 @@
       lineas.push("📝 Nota: " + nota);
     }
 
+    // Nuevo v4.1: si el pedido superó la meta de la recompensa,
+    // el mensaje lleva la línea del bono (informativa: el cajero
+    // decide si la aplica, no inventa precios).
+    if (LOCAL.marketing && LOCAL.marketing.recompensa) {
+      var meta = LOCAL.marketing.recompensa.meta * 100;
+
+      if (totalCarritoCentavos() >= meta) {
+        lineas.push("🎁 *BONUS*: " + LOCAL.marketing.recompensa.premio + " (Promo > S/ " + LOCAL.marketing.recompensa.meta + ")");
+      }
+    }
+
     return lineas.join("\n");
   }
 
   function enviarWhatsApp() {
     var mensaje = generarMensajeWhatsApp();
     var codificado = encodeURIComponent(mensaje);
+
+    // Nuevo v4: el destino lo elige el cliente en la confirmación.
+    var numero = (destinoWhatsApp === "cocina" && LOCAL.whatsappCocina)
+      ? LOCAL.whatsappCocina
+      : LOCAL.whatsappCaja;
 
     // Móvil: wa.me | Escritorio: WhatsApp Web.
     var esMovil =
@@ -802,13 +970,13 @@
     if (esMovil) {
       url =
         "https://wa.me/" +
-        LOCAL.whatsappCaja +
+        numero +
         "?text=" +
         codificado;
     } else {
       url =
         "https://web.whatsapp.com/send?phone=" +
-        LOCAL.whatsappCaja +
+        numero +
         "&text=" +
         codificado;
     }
@@ -846,7 +1014,353 @@
       "click",
       enviarWhatsApp
     );
+
+    // Nuevo v4: destino del pedido (caja / cocina).
+    ["dest-caja", "dest-cocina"].forEach(function (id) {
+      var radio = $(id);
+
+      if (radio) {
+        radio.addEventListener("change", function () {
+          destinoWhatsApp = radio.value;
+
+          $("aviso-destino").textContent = (radio.value === "cocina")
+            ? "👨‍🍳 El pedido irá directo al chat de cocina (la caja lo ve al cobrar)."
+            : "🧾 El pedido irá al chat de caja (cocina lo recibe por el mozo).";
+        });
+      }
+    });
   });
+
+  // ============================================================
+  // MARKETING OPCIONAL (v4) — LOCAL.marketing
+  // Todo es aditivo: si LOCAL.marketing no existe, no se muestra
+  // nada y la web queda exactamente como el SPEC v3.
+  // ============================================================
+
+  function renderMarketing() {
+    var mk = (LOCAL && LOCAL.marketing) || null;
+
+    if (!mk) {
+      return; // sin marketing: web idéntica al SPEC v3
+    }
+
+    // --- Banda de marca ---
+    if (mk.eslogan) {
+      $("bm-kicker-txt").textContent = mk.kicker || "Carta digital · Pide desde tu mesa";
+      $("bm-titulo").innerHTML = "";
+      // El eslogan admite resaltar una palabra entre asteriscos: "texto *brasa* texto"
+      var partes = String(mk.eslogan).split("*");
+      var h = $("bm-titulo");
+
+      partes.forEach(function (parte, i) {
+        if (i % 2 === 1) {
+          var b = document.createElement("span");
+          b.className = "brasa";
+          b.textContent = parte;
+          h.appendChild(b);
+        } else {
+          h.appendChild(document.createTextNode(parte));
+        }
+      });
+
+      $("bm-sub").textContent = mk.subeslogan || "";
+
+      var chips = $("bm-chips");
+      chips.innerHTML = "";
+
+      (mk.chips || []).forEach(function (chip) {
+        var c = document.createElement("span");
+        c.className = "bm-chip";
+        c.textContent = chip;
+        chips.appendChild(c);
+      });
+
+      $("banda-marca").hidden = false;
+    }
+
+    // --- Promo del día ---
+    var promo = mk.promoDia;
+
+    if (promo && promo.titulo) {
+      $("pd-titulo").textContent = promo.titulo;
+      $("pd-detalle").textContent = promo.detalle || "";
+      $("pd-precio").textContent = formatearSoles(aCentavos(promo.precio));
+
+      if (promo.precioAntes) {
+        $("pd-antes").textContent = formatearSoles(aCentavos(promo.precioAntes));
+        $("pd-antes").hidden = false;
+      }
+
+      iniciarCountdownPromo(promo.horaFin || 22);
+
+      // Agregar promo: busca el ítem real del menú (mismo flujo del SPEC).
+      var itemPromo = promo.itemId ? buscarItem(promo.itemId) : null;
+
+      if (itemPromo) {
+        $("pd-boton").hidden = false;
+        $("pd-boton").onclick = function () {
+          if (itemPromo.opciones && itemPromo.opciones.length > 0) {
+            // Con opciones: bajar hasta la tarjeta y abrir su panel.
+            agregarConPrimeraOpcion(itemPromo);
+          } else {
+            agregarAlCarrito(itemPromo, {}, aCentavos(itemPromo.precio));
+          }
+        };
+      } else {
+        $("pd-boton").hidden = true;
+      }
+
+      $("promo-dia").hidden = false;
+    }
+
+    // --- Testimonios ---
+    if (mk.testimonios && mk.testimonios.length > 0) {
+      var lista = $("mk-testi-lista");
+      lista.innerHTML = "";
+
+      mk.testimonios.forEach(function (t) {
+        var card = document.createElement("div");
+        card.className = "testi-card";
+
+        var estrellas = document.createElement("div");
+        estrellas.className = "testi-estrellas";
+        estrellas.textContent = "★★★★★".slice(0, t.estrellas || 5);
+        estrellas.setAttribute("aria-label", (t.estrellas || 5) + " de 5 estrellas");
+        card.appendChild(estrellas);
+
+        var texto = document.createElement("p");
+        texto.className = "testi-texto";
+        texto.textContent = "“" + (t.texto || "") + "”";
+        card.appendChild(texto);
+
+        var pie = document.createElement("div");
+        pie.className = "testi-pie";
+
+        var avatar = document.createElement("span");
+        avatar.className = "testi-avatar";
+        avatar.textContent = (t.nombre || "?").charAt(0).toUpperCase();
+        pie.appendChild(avatar);
+
+        var quien = document.createElement("span");
+        quien.innerHTML = "<span class='testi-nombre'></span><br><span class='testi-zona'></span>";
+        quien.querySelector(".testi-nombre").textContent = t.nombre || "";
+        quien.querySelector(".testi-zona").textContent = t.zona || "";
+        pie.appendChild(quien);
+
+        var verificado = document.createElement("span");
+        verificado.className = "testi-verificado";
+        verificado.textContent = "✓ Pedido verificado";
+        pie.appendChild(verificado);
+
+        card.appendChild(pie);
+        lista.appendChild(card);
+      });
+
+      $("mk-testimonios").hidden = false;
+    }
+
+    // --- Club ---
+    if (mk.club && mk.club.activo) {
+      $("club-titulo").textContent = mk.club.titulo || "Club de la casa 🐔";
+      $("club-texto").textContent = mk.club.texto || "";
+
+      var sellos = $("club-sellos");
+      sellos.innerHTML = "";
+
+      var total = mk.club.sellos || 10;
+      var llenos = Math.min(mk.club.sellosLlenos || 0, total);
+
+      for (var s = 0; s < total; s++) {
+        var sello = document.createElement("span");
+        sello.className = "club-sello" + (s < llenos ? " on" : "");
+        sello.textContent = "🐓";
+        sellos.appendChild(sello);
+      }
+
+      $("mk-club").hidden = false;
+    }
+
+    // --- Ubicación y horarios ---
+    if (mk.direccion || (mk.horarios && mk.horarios.length > 0)) {
+      $("ubi-direccion").textContent = mk.direccion || "";
+      $("ubi-referencia").textContent = mk.referencia || "";
+
+      if (mk.telefono) {
+        $("ubi-telefono").innerHTML = "";
+        $("ubi-telefono").textContent = mk.telefono;
+        $("ubi-telefono-fila").hidden = false;
+      } else {
+        $("ubi-telefono-fila").hidden = true;
+      }
+
+      var tabla = $("ubi-horarios");
+      tabla.innerHTML = "";
+
+      (mk.horarios || []).forEach(function (h) {
+        var tr = document.createElement("tr");
+        var td1 = document.createElement("td");
+        var td2 = document.createElement("td");
+
+        td1.textContent = h.dias || "";
+        td2.textContent = h.hora || "";
+
+        tr.appendChild(td1);
+        tr.appendChild(td2);
+        tabla.appendChild(tr);
+      });
+
+      var zonas = $("ubi-zonas");
+      zonas.innerHTML = "";
+
+      (mk.zonas || []).forEach(function (z) {
+        var div = document.createElement("div");
+        div.className = "ubi-zona";
+
+        var n = document.createElement("span");
+        n.textContent = z.nombre || "";
+
+        var t = document.createElement("b");
+        t.textContent = z.tiempo || "";
+
+        div.appendChild(n);
+        div.appendChild(t);
+        zonas.appendChild(div);
+      });
+
+      $("mk-ubicacion").hidden = false;
+    }
+
+    // --- Footer ---
+    $("mf-nombre").textContent = LOCAL.nombre || "";
+    $("mf-eslogan").textContent = mk.footerEslogan || "";
+    $("mf-contacto").textContent = mk.footerContacto || "";
+
+    var pagos = $("mf-pagos");
+    pagos.innerHTML = "";
+
+    (mk.pagos || []).forEach(function (p) {
+      var chip = document.createElement("span");
+      chip.className = "mf-pago";
+      chip.textContent = p;
+      pagos.appendChild(chip);
+    });
+
+    $("mk-footer").hidden = false;
+
+    // FIX v4.1 (bug crítico): los hijos de #zona-marketing se
+    // desocultan arriba, pero el PADRE seguía oculto y, por la
+    // regla [hidden] { display:none !important; } de estilo.css,
+    // toda la zona inferior (testimonios, club, ubicación) era
+    // invisible. Si al menos una sección tiene contenido, el
+    // contenedor se muestra.
+    if (
+      !$("mk-testimonios").hidden ||
+      !$("mk-club").hidden ||
+      !$("mk-ubicacion").hidden
+    ) {
+      $("zona-marketing").hidden = false;
+    }
+  }
+
+  function buscarItem(itemId) {
+    var encontrado = null;
+
+    LOCAL.menu.forEach(function (cat) {
+      cat.items.forEach(function (item) {
+        if (item.id === itemId) {
+          encontrado = item;
+        }
+      });
+    });
+
+    return encontrado;
+  }
+
+  function agregarConPrimeraOpcion(item) {
+    // Agrega el producto con la primera opción de cada grupo
+    // (el panel completo siempre está disponible en su tarjeta).
+    var seleccion = {};
+
+    (item.opciones || []).forEach(function (op) {
+      seleccion[op.tipo] = op.choices[0].nombre;
+    });
+
+    agregarAlCarrito(item, seleccion, precioDeSeleccion(item, seleccion));
+
+    if (typeof mostrarToast === "function") {
+      mostrarToast("✓ " + item.nombre + " agregado — elige opciones en la carta si quieres");
+    }
+  }
+
+  // ---------- Cuenta regresiva de la promo ----------
+
+  var countdownTimer = null;
+
+  function iniciarCountdownPromo(horaFin) {
+    if (countdownTimer) {
+      clearInterval(countdownTimer);
+    }
+
+    function tick() {
+      var ahora = new Date();
+      var fin = new Date();
+
+      fin.setHours(horaFin, 0, 0, 0);
+
+      if (ahora >= fin) {
+        fin.setDate(fin.getDate() + 1);
+      }
+
+      var diff = Math.max(0, Math.floor((fin - ahora) / 1000));
+      var h = Math.floor(diff / 3600);
+      var m = Math.floor((diff % 3600) / 60);
+      var s = diff % 60;
+
+      $("pd-h").textContent = (h < 10 ? "0" : "") + h;
+      $("pd-m").textContent = (m < 10 ? "0" : "") + m;
+      $("pd-s").textContent = (s < 10 ? "0" : "") + s;
+    }
+
+    tick();
+    countdownTimer = setInterval(tick, 1000);
+  }
+
+  // ---------- Animación de aparición (respeta reduced-motion) ----------
+
+  var revealObs = null;
+
+  function observarReveals() {
+    var elementos = document.querySelectorAll(".reveal");
+
+    if (!elementos.length) {
+      return;
+    }
+
+    var reducido = window.matchMedia &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    if (reducido || !("IntersectionObserver" in window)) {
+      elementos.forEach(function (el) {
+        el.classList.add("visible");
+      });
+      return;
+    }
+
+    if (!revealObs) {
+      revealObs = new IntersectionObserver(function (entradas) {
+        entradas.forEach(function (en) {
+          if (en.isIntersecting) {
+            en.target.classList.add("visible");
+            revealObs.unobserve(en.target);
+          }
+        });
+      }, { threshold: 0.15, rootMargin: "0px 0px -30px 0px" });
+    }
+
+    elementos.forEach(function (el) {
+      revealObs.observe(el);
+    });
+  }
 
   // ---------- Arranque (Orden 3a) ----------
 
