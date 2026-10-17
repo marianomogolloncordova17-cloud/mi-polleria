@@ -3,7 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Pollería</title>
+<title>Pollería — Carta digital y pedidos por WhatsApp</title>
+<meta name="description" content="Escanea el QR de tu mesa, arma tu pedido viendo fotos y envíalo por WhatsApp a caja. Rápido, sin esperar al mozo.">
+<meta name="theme-color" content="#C8102E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%23C8102E'/%3E%3Ctext x='50' y='66' font-size='52' text-anchor='middle'%3E%F0%9F%90%93%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="estilo.css">
 </head>
 <body>
@@ -12,6 +15,7 @@
   <header id="encabezado">
     <div id="local-info">
       <img id="local-logo" alt="Logo del local" hidden>
+      <span id="local-monograma" aria-hidden="true"></span>
       <h1 id="local-nombre"></h1>
     </div>
     <div id="badge-mesa" hidden>MESA <span id="mesa-numero"></span></div>
@@ -22,31 +26,141 @@
 
     <!-- PANTALLA 1: LISTA DE PRODUCTOS (sección 7) -->
     <section id="pantalla-lista" class="pantalla">
+
+      <!-- Banda de marca (marketing opcional: LOCAL.marketing) -->
+      <div id="banda-marca" hidden>
+        <span class="bm-kicker"><span class="dotp"></span><span id="bm-kicker-txt"></span></span>
+        <h2 id="bm-titulo"></h2>
+        <p class="bm-sub" id="bm-sub"></p>
+        <div class="bm-chips" id="bm-chips"></div>
+      </div>
+
+      <!-- Promo del día (marketing opcional: LOCAL.marketing.promoDia) -->
+      <div id="promo-dia" hidden>
+        <div class="pd-info">
+          <span class="pd-kick" id="pd-kick">Promo del día</span>
+          <p class="pd-titulo" id="pd-titulo"></p>
+          <p class="pd-detalle" id="pd-detalle"></p>
+          <div class="pd-precio"><s id="pd-antes" hidden></s><b id="pd-precio"></b></div>
+        </div>
+        <div class="pd-count" aria-label="La promo termina en">
+          <span class="pd-cell"><b id="pd-h">00</b><small>horas</small></span>
+          <span class="pd-sep">:</span>
+          <span class="pd-cell"><b id="pd-m">00</b><small>min</small></span>
+          <span class="pd-sep">:</span>
+          <span class="pd-cell"><b id="pd-s">00</b><small>seg</small></span>
+        </div>
+        <button type="button" class="boton-promo" id="pd-boton">+ Agregar promo</button>
+      </div>
+
       <div id="lista-menu"><!-- las tarjetas se renderizan por app.js desde los datos --></div>
+
+      <!-- Zona marketing (opcional): testimonios, club, ubicación -->
+      <div id="zona-marketing" hidden>
+
+        <div class="mk-seccion reveal" id="mk-testimonios" hidden>
+          <h3 class="mk-titulo">⭐ Lo que dice la gente</h3>
+          <div id="mk-testi-lista"></div>
+        </div>
+
+        <div class="mk-seccion reveal" id="mk-club" hidden>
+          <div class="club-card">
+            <div class="club-info">
+              <h4 class="club-titulo" id="club-titulo"></h4>
+              <p class="club-texto" id="club-texto"></p>
+              <div class="club-sellos" id="club-sellos" aria-hidden="true"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mk-seccion reveal" id="mk-ubicacion" hidden>
+          <h3 class="mk-titulo">📍 Ubicación y horarios</h3>
+          <div class="ubi-card">
+            <div class="ubi-fila">
+              <span class="ubi-ico">📍</span>
+              <span><b id="ubi-direccion"></b><br><span id="ubi-referencia"></span></span>
+            </div>
+            <div class="ubi-fila" id="ubi-telefono-fila">
+              <span class="ubi-ico">📞</span>
+              <span id="ubi-telefono"></span>
+            </div>
+            <table class="ubi-horario" id="ubi-horarios" aria-label="Horario de atención"></table>
+            <div id="ubi-zonas" style="margin-top:12px"></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Pie (marketing opcional) -->
+      <footer class="mk-footer" id="mk-footer" hidden>
+        <p class="mf-nombre" id="mf-nombre"></p>
+        <p id="mf-eslogan"></p>
+        <p id="mf-contacto"></p>
+        <div class="mf-pagos" id="mf-pagos"></div>
+      </footer>
+
     </section>
 
     <!-- PANTALLA 2: CARRITO (sección 7) -->
     <section id="pantalla-carrito" class="pantalla" hidden>
-      <h2 class="titulo-pantalla">Tu pedido</h2>
+      <h2 class="titulo-pantalla">Tu pedido 🛒</h2>
       <div id="lineas-carrito"><!-- las líneas se renderizan por app.js --></div>
-      <div id="total-carrito"><!-- el total se renderiza por app.js --></div>
+
+      <!-- Barra de Recompensa (nuevo v4.1): cuánto falta para el premio -->
+      <div id="barra-recompensa" hidden>
+        <p id="texto-recompensa"></p>
+        <div class="progreso-fondo"><div id="progreso-barra" class="progreso-barra"></div></div>
+      </div>
+
+      <div id="total-carrito" class="total-carrito"><!-- el total se renderiza por app.js --></div>
       <button type="button" id="boton-confirmar" class="boton-primario">Confirmar pedido</button>
       <button type="button" id="boton-volver-lista" class="boton-secundario">Seguir pidiendo</button>
     </section>
 
-    <!-- PANTALLA 3: CONFIRMACIÓN (sección 7) -->
+    <!-- PANTALLA 3: CONFIRMACIÓN (sección 7) + destino WhatsApp (v4) -->
     <section id="pantalla-confirmacion" class="pantalla" hidden>
       <h2 class="titulo-pantalla">Confirma tu pedido</h2>
+
+      <!-- Barra de Recompensa (nuevo v4.1): mismos IDs con prefijo conf- -->
+      <div id="conf-barra-recompensa" hidden>
+        <p id="conf-texto-recompensa"></p>
+        <div class="progreso-fondo"><div id="conf-progreso-barra" class="progreso-barra"></div></div>
+      </div>
+
       <div id="resumen-confirmacion"><!-- el resumen se renderiza por app.js --></div>
       <label class="etiqueta-campo" for="nota-pedido">¿Algo más que debamos saber? (opcional)</label>
       <textarea id="nota-pedido" rows="3" maxlength="80" placeholder="Ej.: sin ají, traer vasos extra"></textarea>
       <div id="contador-nota">0/80</div>
+
+      <!-- Destino del pedido (nuevo en v4): Caja por defecto, Cocina opcional -->
+      <span class="etiqueta-campo" id="etiqueta-destino">¿A quién le enviamos el pedido?</span>
+      <div id="selector-destino" role="radiogroup" aria-labelledby="etiqueta-destino">
+        <span class="destino-op">
+          <input type="radio" name="destino" id="dest-caja" value="caja" checked>
+          <label for="dest-caja">
+            <span class="dest-ico">🧾</span>
+            <span class="dest-nombre">Caja</span>
+            <span class="dest-ayuda">Confirma tu pedido</span>
+          </label>
+        </span>
+        <span class="destino-op" id="op-cocina" hidden>
+          <input type="radio" name="destino" id="dest-cocina" value="cocina">
+          <label for="dest-cocina">
+            <span class="dest-ico">👨‍🍳</span>
+            <span class="dest-nombre">Cocina</span>
+            <span class="dest-ayuda">Directo a la parrilla</span>
+          </label>
+        </span>
+      </div>
+      <p class="aviso-destino" id="aviso-destino">Se abre WhatsApp con el pedido listo para enviar a caja. Tú presionas Enviar.</p>
+
       <button type="button" id="boton-enviar-whatsapp" class="boton-primario">Confirmar y enviar por WhatsApp</button>
       <button type="button" id="boton-editar-pedido" class="boton-secundario">Editar pedido</button>
     </section>
 
     <!-- PANTALLA DE AVISO: cortesía y errores (sección 12) -->
     <section id="pantalla-aviso" class="pantalla" hidden>
+      <div class="aviso-emoji" aria-hidden="true" id="aviso-emoji">🐓</div>
       <div id="aviso-texto"><!-- el texto exacto lo pone app.js --></div>
       <div id="aviso-mesa-selector" hidden><!-- selector de mesa 1-30 (sección 4) --></div>
     </section>
@@ -55,6 +169,9 @@
 
   <!-- BOTÓN FLOTANTE FIJO (sección 7) -->
   <button type="button" id="boton-ver-pedido" class="boton-flotante">Ver pedido (0) — S/ 0.00</button>
+
+  <!-- Toast de feedback (nuevo en v4) -->
+  <div id="toast" role="status" aria-live="polite"></div>
 
   <script src="app.js"></script>
 </body>
