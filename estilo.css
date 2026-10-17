@@ -1,11 +1,19 @@
 /* ============================================================
-   mi-polleria — estilo.css
-   Diseño mobile-first (sección 11). Sin dependencias externas.
+   mi-polleria — estilo.css  (v4 — Fusión Marketing)
+   Diseño mobile-first (SPEC sección 11). Sin dependencias
+   externas: JavaScript puro + system-ui + emojis.
 
    Colores del local (sección 4): los valores por defecto son
-   EJEMPLO. app.js sobrescribirá estas variables en runtime con
-   LOCAL.colores (Orden 3). Ninguna regla usa colores fijos del
-   local: siempre se leen de --color-*.
+   EJEMPLO. app.js sobrescribe --color-* en runtime con
+   LOCAL.colores. Los tonos derivados usan color-mix(), por lo
+   que se adaptan solos al color que ponga cada cliente.
+
+   FIX v4 (bug de pantalla vertical): la tarjeta de producto usa
+   flex con foto/texto/botón de ancho controlado y el badge
+   destacado es SIEMPRE position:absolute (fuera del flujo).
+   En cualquier orientación (vertical/horizontal) la tarjeta
+   conserva: foto a la izquierda, textos fluidos al centro y
+   botón "+" a la derecha.
    ============================================================ */
 
 :root {
@@ -13,52 +21,67 @@
   --color-fondo:    #FFF8F0; /* EJEMPLO */
   --color-texto:    #222222; /* EJEMPLO */
 
+  /* derivados automáticos (se adaptan a --color-primario) */
+  --color-oscuro:  color-mix(in srgb, var(--color-primario) 78%, #000000);
+  --color-suave:   color-mix(in srgb, var(--color-primario) 12%, #FFFFFF);
+  --color-naranja: #FF4500;   /* brasas (acento fijo de marca) */
+  --color-oro:     #FFB703;   /* estrellas / promos */
+  --color-verde:   #25D366;   /* WhatsApp */
+
   /* neutros estructurales (no forman parte de la marca) */
   --superficie:  #FFFFFF;
-  --texto-suave: #666666;
-  --borde-suave: #DDDDDD;
+  --texto-suave: #6E5A50;
+  --borde-suave: #F0E0D0;
+  --tinta-oscura: #241009;
 }
 
 /* Un elemento [hidden] nunca debe mostrarse, aunque otra regla
    le asigne display. Garantiza "una sola pantalla visible". */
-[hidden] {
-  display: none !important;
-}
+[hidden] { display: none !important; }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
-html,
-body {
-  margin: 0;
-  padding: 0;
-}
+html, body { margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
 
 body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   font-size: 16px; /* tipografía mínima 16px (sección 11) */
-  line-height: 1.4;
+  line-height: 1.45;
   color: var(--color-texto);
   background: var(--color-fondo);
   min-height: 100vh;
 }
 
-/* ---------- Encabezado fijo ---------- */
+img { max-width: 100%; }
+
+button { font-family: inherit; }
+
+button:focus-visible,
+a:focus-visible,
+textarea:focus,
+select:focus,
+input:focus {
+  outline: 3px solid var(--color-oro);
+  outline-offset: 2px;
+}
+
+/* ============================================================
+   ENCABEZADO FIJO (sección 7): logo/nombre + MESA N + DEMO
+   ============================================================ */
 #encabezado {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
+  top: 0; left: 0; right: 0;
   z-index: 100;
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 56px;
-  padding: 8px 12px;
-  background: var(--color-primario);
+  min-height: 58px;
+  padding: 8px 14px;
+  background: linear-gradient(90deg, var(--color-oscuro) 0%, var(--color-primario) 55%, var(--color-naranja) 100%);
   color: #FFFFFF;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 3px 14px rgba(120, 10, 20, 0.35);
 }
 
 #local-info {
@@ -66,24 +89,45 @@ body {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 #local-logo {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
+  flex: none;
   border-radius: 50%;
   object-fit: cover;
   background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 220, 140, 0.85);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Monograma si el local no definió logoUrl */
+#local-monograma {
+  width: 42px;
+  height: 42px;
+  flex: none;
+  border-radius: 50%;
+  display: none; /* app.js lo activa si no hay logo */
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 30% 25%, var(--color-naranja), var(--color-oscuro));
+  border: 2px solid rgba(255, 220, 140, 0.85);
+  font-size: 20px;
+  font-weight: 800;
+  color: #FFFFFF;
 }
 
 #local-nombre {
   margin: 0;
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
 }
 
 /* El distintivo MESA N es el dato más visible de la pantalla (sección 7) */
@@ -93,49 +137,297 @@ body {
   font-size: 17px;
   font-weight: 800;
   line-height: 1;
-  padding: 10px 14px;
+  padding: 10px 16px;
   border-radius: 999px;
   white-space: nowrap;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+  flex: none;
 }
 
 #etiqueta-demo {
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(40, 4, 8, 0.5);
   color: #FFFFFF;
   font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  padding: 6px 10px;
-  border-radius: 6px;
+  font-weight: 800;
+  letter-spacing: 1.4px;
+  padding: 7px 11px;
+  border-radius: 8px;
+  flex: none;
 }
 
-/* ---------- Zona principal ---------- */
+/* ============================================================
+   ZONA PRINCIPAL
+   ============================================================ */
 #contenido {
-  padding: 80px 12px 96px; /* hueco para header fijo y botón flotante */
+  padding: 76px 12px 110px; /* hueco para header fijo y botón flotante */
+}
+
+@media (min-width: 768px) {
+  #contenido {
+    max-width: 720px;
+    margin: 0 auto;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
 }
 
 .titulo-pantalla {
   margin: 4px 0 14px;
-  font-size: 20px;
+  font-size: 21px;
+  font-weight: 800;
   color: var(--color-texto);
 }
 
-/* ---------- Tarjeta de producto ---------- */
-.tarjeta-producto {
-  display: grid;
-  grid-template-columns: 96px 1fr 48px;
-  gap: 10px;
+/* ============================================================
+   BANDA DE MARCA (marketing, opcional vía LOCAL.marketing)
+   ============================================================ */
+#banda-marca {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  margin: 6px 0 16px;
+  padding: 20px 20px 22px;
+  color: #FFFFFF;
+  background:
+    radial-gradient(420px 240px at 88% -20%, color-mix(in srgb, var(--color-naranja) 55%, transparent), transparent 70%),
+    radial-gradient(320px 220px at -10% 120%, color-mix(in srgb, var(--color-primario) 55%, transparent), transparent 70%),
+    linear-gradient(155deg, #2A120B 0%, #1D0B07 60%, #300F08 100%);
+  box-shadow: 0 12px 30px rgba(60, 10, 5, 0.25);
+}
+
+#banda-marca .bm-kicker {
+  display: inline-flex;
   align-items: center;
+  gap: 8px;
+  border: 1.5px solid color-mix(in srgb, var(--color-oro) 70%, transparent);
+  background: rgba(255, 183, 3, 0.12);
+  color: #FFD98A;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  padding: 6px 13px;
+  border-radius: 999px;
+  margin: 0 0 10px;
+}
+
+#banda-marca .bm-kicker .dotp {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--color-oro);
+  animation: pulso-punto 1.6s infinite;
+}
+
+@keyframes pulso-punto {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(1.5); opacity: 0.5; }
+}
+
+#banda-marca h2 {
+  margin: 0 0 8px;
+  font-size: 24px;
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  text-shadow: 0 3px 14px rgba(0, 0, 0, 0.4);
+}
+
+#banda-marca h2 .brasa {
+  color: var(--color-oro);
+}
+
+#banda-marca p.bm-sub {
+  margin: 0 0 14px;
+  color: rgba(255, 240, 224, 0.85);
+  font-size: 14.5px;
+  font-weight: 600;
+  max-width: 520px;
+}
+
+.bm-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #FFEDD6;
+  font-size: 12.5px;
+  font-weight: 800;
+  padding: 7px 13px;
+  border-radius: 999px;
+}
+
+/* ============================================================
+   PROMO DEL DÍA (marketing, opcional vía LOCAL.marketing.promoDia)
+   ============================================================ */
+#promo-dia {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  margin: 0 0 18px;
+  padding: 16px 18px;
+  color: #FFFFFF;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  background: linear-gradient(120deg, var(--color-primario) 0%, var(--color-naranja) 100%);
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--color-primario) 38%, transparent);
+}
+
+#promo-dia::before {
+  content: "";
+  position: absolute;
+  top: -46px; right: -46px;
+  width: 160px; height: 160px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+#promo-dia .pd-info { flex: 1 1 240px; min-width: 0; position: relative; }
+
+#promo-dia .pd-kick {
+  display: inline-block;
+  background: rgba(0, 0, 0, 0.28);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 4px 11px;
+  border-radius: 999px;
+  margin: 0 0 7px;
+}
+
+#promo-dia .pd-titulo {
+  margin: 0 0 3px;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+#promo-dia .pd-detalle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 244, 230, 0.92);
+}
+
+#promo-dia .pd-precio {
+  margin-top: 6px;
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+
+#promo-dia .pd-precio s {
+  opacity: 0.75;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+#promo-dia .pd-precio b {
+  font-size: 23px;
+  font-weight: 800;
+  color: #FFE18A;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+#promo-dia .pd-count {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+}
+
+#promo-dia .pd-cell {
+  background: rgba(20, 4, 6, 0.4);
+  border: 1.5px solid rgba(255, 255, 255, 0.28);
+  border-radius: 12px;
+  padding: 7px 9px;
+  text-align: center;
+  min-width: 52px;
+}
+
+#promo-dia .pd-cell b {
+  display: block;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.05;
+}
+
+#promo-dia .pd-cell small {
+  display: block;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: rgba(255, 240, 220, 0.85);
+}
+
+#promo-dia .pd-sep {
+  font-size: 18px;
+  font-weight: 800;
+  opacity: 0.7;
+}
+
+.boton-promo {
+  position: relative;
+  flex: none;
+  min-height: 48px;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 999px;
+  background: #FFFFFF;
+  color: var(--color-primario);
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22);
+  transition: transform 0.15s ease;
+}
+
+.boton-promo:active { transform: scale(0.95); }
+
+/* ============================================================
+   TARJETA DE PRODUCTO
+   ============================================================ */
+.tarjeta-producto {
+  /* FIX v4: flex con anchos controlados. El badge destacado es
+     absoluto y JAMÁS participa del flujo (bug de pantalla
+     vertical corregido). */
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
   background: var(--superficie);
-  border-radius: 14px;
-  padding: 10px;
+  border-radius: 16px;
+  padding: 11px;
   margin-bottom: 12px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--borde-suave);
+  box-shadow: 0 2px 8px rgba(120, 40, 20, 0.07);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.tarjeta-producto:active { transform: scale(0.985); }
+
+@media (hover: hover) {
+  .tarjeta-producto:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(120, 40, 20, 0.14);
+  }
 }
 
 .foto-producto {
   width: 96px;
   height: 96px;
-  border-radius: 10px;
+  flex: none;
+  border-radius: 12px;
   overflow: hidden;
   background: var(--borde-suave);
 }
@@ -145,6 +437,11 @@ body {
   height: 100%;
   object-fit: cover;
   display: block;
+  transition: transform 0.35s ease;
+}
+
+@media (hover: hover) {
+  .tarjeta-producto:hover .foto-producto img { transform: scale(1.06); }
 }
 
 /* Variante sin foto: degradado digno con tipografía clara (sección 16.6).
@@ -153,62 +450,92 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--color-primario) 0%, var(--color-texto) 100%);
+  background: linear-gradient(135deg, var(--color-primario) 0%, var(--color-naranja) 100%);
   color: #FFFFFF;
   font-size: 32px;
   font-weight: 700;
 }
 
+/* Textos del producto: columna fluida que nunca colapsa */
+.info-producto {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
 .nombre-producto {
   margin: 0 0 2px;
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 16.5px;
+  font-weight: 800;
   color: var(--color-texto);
+  line-height: 1.25;
 }
 
 .incluye-producto {
   margin: 0 0 4px;
   font-size: 13px;
   color: var(--texto-suave);
+  line-height: 1.4;
 }
 
 .precio-producto {
   margin: 0;
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 18px;
+  font-weight: 800;
   color: var(--color-primario);
+  letter-spacing: 0.2px;
 }
 
 .boton-mas {
   width: 48px;
   height: 48px;
+  flex: none;
+  margin-left: auto;
   border: none;
   border-radius: 50%;
-  background: var(--color-primario);
+  background: linear-gradient(135deg, var(--color-primario), var(--color-oscuro));
   color: #FFFFFF;
-  font-size: 28px;
+  font-size: 27px;
   line-height: 1;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 5px 14px color-mix(in srgb, var(--color-primario) 42%, transparent);
+  transition: transform 0.15s ease;
+}
+
+.boton-mas:active { transform: scale(0.9); }
+
+/* Badge de prueba social: SIEMPRE absoluto, fuera del flujo */
+.badge-destacado {
+  position: absolute;
+  top: -9px;
+  right: 12px;
+  background: linear-gradient(120deg, var(--color-naranja), color-mix(in srgb, var(--color-naranja) 70%, #B33000));
+  color: #FFFFFF;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  box-shadow: 0 3px 9px rgba(200, 60, 10, 0.4);
+  z-index: 10;
+  white-space: nowrap;
 }
 
 /* ---------- Opciones en línea ----------
    Estructura por opción (la genera app.js):
    <span class="opcion"><input type="radio" id="..."><label for="...">…</label></span> */
 .opciones-inline {
-  grid-column: 1 / -1;
+  flex-basis: 100%;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   padding-top: 10px;
-  border-top: 1px solid var(--borde-suave);
+  border-top: 1px dashed var(--borde-suave);
 }
 
-.opcion {
-  position: relative;
-}
+.opcion { position: relative; }
 
 .opcion input[type="radio"] {
   position: absolute;
@@ -226,46 +553,67 @@ body {
   border-radius: 999px;
   background: var(--superficie);
   color: var(--color-primario);
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 14.5px;
+  font-weight: 700;
   cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .opcion input:checked + label {
   background: var(--color-primario);
   color: #FFFFFF;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--color-primario) 40%, transparent);
+}
+
+.opcion-tipo {
+  flex-basis: 100%;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--texto-suave);
 }
 
 .boton-agregar {
-  grid-column: 1 / -1;
+  flex-basis: 100%;
   width: 100%;
   min-height: 48px;
   border: none;
   border-radius: 12px;
-  background: var(--color-primario);
+  background: linear-gradient(135deg, var(--color-primario), var(--color-oscuro));
   color: #FFFFFF;
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 800;
   cursor: pointer;
+  box-shadow: 0 5px 14px color-mix(in srgb, var(--color-primario) 40%, transparent);
+  transition: transform 0.12s ease;
 }
 
-/* ---------- Botones generales ---------- */
+.boton-agregar:active { transform: scale(0.97); }
+
+/* ============================================================
+   BOTONES GENERALES
+   ============================================================ */
 .boton-primario,
 .boton-secundario {
   width: 100%;
-  min-height: 48px;
-  border-radius: 12px;
+  min-height: 50px;
+  border-radius: 14px;
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 800;
   cursor: pointer;
   margin-bottom: 10px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .boton-primario {
   border: none;
-  background: var(--color-primario);
+  background: linear-gradient(135deg, var(--color-primario), var(--color-oscuro));
   color: #FFFFFF;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--color-primario) 42%, transparent);
 }
+
+.boton-primario:active { transform: scale(0.98); }
 
 .boton-secundario {
   border: 2px solid var(--color-primario);
@@ -273,21 +621,26 @@ body {
   color: var(--color-primario);
 }
 
-/* ---------- Pantalla de carrito ---------- */
+.boton-secundario:active { transform: scale(0.98); }
+
+/* ============================================================
+   PANTALLA DE CARRITO
+   ============================================================ */
 .linea-carrito {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   background: var(--superficie);
-  border-radius: 12px;
-  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid var(--borde-suave);
+  padding: 12px;
   margin-bottom: 10px;
 }
 
 .linea-carrito .nombre-linea {
   flex: 1 1 130px;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .linea-carrito .opciones-linea {
@@ -303,25 +656,33 @@ body {
 }
 
 .boton-cantidad {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border: 2px solid var(--color-primario);
   border-radius: 50%;
   background: var(--superficie);
   color: var(--color-primario);
-  font-size: 22px;
+  font-size: 21px;
   line-height: 1;
+  font-weight: 800;
   cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.boton-cantidad:active {
+  background: var(--color-primario);
+  color: #FFFFFF;
 }
 
 .cantidad {
   min-width: 24px;
   text-align: center;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .precio-linea {
-  font-weight: 700;
+  font-weight: 800;
+  color: var(--color-primario);
 }
 
 .boton-quitar {
@@ -330,33 +691,49 @@ body {
   border: none;
   background: transparent;
   color: var(--texto-suave);
-  font-size: 15px;
+  font-size: 14px;
+  font-weight: 700;
   text-decoration: underline;
   cursor: pointer;
 }
 
+/* ============================================================
+   BARRA DE RECOMPENSA (nuevo v4.1 — Efecto Gradiente de Meta)
+   Muestra cuánto falta para el premio en el carrito y en la
+   confirmación. Al 100% el relleno pasa a verde (logro).
+   ============================================================ */
+#barra-recompensa, #conf-barra-recompensa { margin: 12px 0; padding: 12px; background: #FFF8F0; border: 1px solid var(--borde-suave); border-radius: 12px; }
+#texto-recompensa, #conf-texto-recompensa { margin: 0 0 8px; font-size: 14px; font-weight: 700; color: var(--color-texto); text-align: center; }
+.progreso-fondo { height: 12px; background: #E0E0E0; border-radius: 999px; overflow: hidden; }
+.progreso-barra { height: 100%; width: 0%; background: linear-gradient(90deg, var(--color-primario), var(--color-naranja)); transition: width 0.4s ease; }
+.progreso-barra.completa { background: linear-gradient(90deg, #25D366, #128A46); }
+
 .total-carrito {
   background: var(--superficie);
-  border-radius: 12px;
+  border: 1.5px dashed color-mix(in srgb, var(--color-primario) 45%, #FFFFFF);
+  border-radius: 14px;
   padding: 14px;
   margin: 12px 0;
   text-align: right;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 800;
+  color: var(--color-texto);
 }
 
-/* ---------- Pantalla de confirmación ---------- */
+/* ============================================================
+   PANTALLA DE CONFIRMACIÓN + DESTINO WHATSAPP
+   ============================================================ */
 .etiqueta-campo {
   display: block;
   margin-bottom: 6px;
-  font-weight: 600;
+  font-weight: 800;
 }
 
 #nota-pedido {
   width: 100%;
   min-height: 88px;
   padding: 10px;
-  border: 1px solid var(--borde-suave);
+  border: 1.5px solid var(--borde-suave);
   border-radius: 10px;
   font-family: inherit;
   font-size: 16px;
@@ -372,7 +749,87 @@ body {
   margin: 4px 0 12px;
 }
 
-/* ---------- Pantalla de aviso / cortesía (sección 12) ---------- */
+/* Destino del pedido: Caja (por defecto) / Cocina */
+#selector-destino {
+  display: flex;
+  gap: 10px;
+  margin: 4px 0 16px;
+}
+
+.destino-op {
+  flex: 1;
+  position: relative;
+}
+
+.destino-op input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.destino-op label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-height: 64px;
+  padding: 10px 8px;
+  border: 2px solid var(--borde-suave);
+  border-radius: 14px;
+  background: var(--superficie);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.destino-op .dest-ico { font-size: 22px; line-height: 1; }
+.destino-op .dest-nombre { font-size: 14px; font-weight: 800; }
+.destino-op .dest-ayuda { font-size: 11px; font-weight: 600; color: var(--texto-suave); }
+
+.destino-op input:checked + label {
+  border-color: var(--color-verde);
+  background: color-mix(in srgb, var(--color-verde) 9%, #FFFFFF);
+  box-shadow: 0 4px 14px rgba(37, 211, 102, 0.25);
+}
+
+.resumen-linea {
+  margin: 0 0 6px;
+  padding: 9px 12px;
+  background: var(--superficie);
+  border: 1px solid var(--borde-suave);
+  border-radius: 10px;
+  font-size: 14.5px;
+  font-weight: 700;
+}
+
+.resumen-linea.res-total {
+  border: 1.5px dashed color-mix(in srgb, var(--color-primario) 45%, #FFFFFF);
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-primario);
+}
+
+.resumen-mesa {
+  display: inline-block;
+  background: var(--color-primario);
+  color: #FFFFFF;
+  font-weight: 800;
+  font-size: 14px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  margin: 0 0 12px;
+}
+
+.aviso-destino {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--texto-suave);
+  margin: -6px 0 14px;
+}
+
+/* ============================================================
+   PANTALLA DE AVISO / CORTESÍA (sección 12)
+   ============================================================ */
 #pantalla-aviso {
   display: flex;
   flex-direction: column;
@@ -384,10 +841,15 @@ body {
   padding: 24px 16px;
 }
 
+#pantalla-aviso .aviso-emoji {
+  font-size: 54px;
+  line-height: 1;
+}
+
 #aviso-texto {
-  max-width: 340px;
+  max-width: 360px;
   font-size: 18px;
-  font-weight: 600;
+  font-weight: 800;
   color: var(--color-texto);
 }
 
@@ -401,102 +863,399 @@ body {
   font-size: 16px;
 }
 
-/* ---------- Botón flotante (sección 7) ---------- */
+/* ============================================================
+   BOTÓN FLOTANTE (sección 7)
+   ============================================================ */
 .boton-flotante {
   position: fixed;
   left: 12px;
   right: 12px;
-  bottom: 12px;
+  bottom: 14px;
   z-index: 100;
   min-height: 56px;
   border: none;
-  border-radius: 28px;
-  background: var(--color-primario);
+  border-radius: 999px;
+  background: linear-gradient(120deg, var(--color-primario), var(--color-naranja));
   color: #FFFFFF;
-  font-size: 16px;
+  font-size: 16.5px;
   font-weight: 800;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  letter-spacing: 0.2px;
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--color-primario) 52%, transparent), 0 0 0 4px rgba(255, 255, 255, 0.6);
   cursor: pointer;
+  transition: transform 0.15s ease;
 }
 
-/* ---------- Foco visible (accesibilidad) ---------- */
-button:focus-visible,
-textarea:focus,
-select:focus {
-  outline: 3px solid var(--color-primario);
-  outline-offset: 2px;
-}
+.boton-flotante:active { transform: scale(0.98); }
 
-/* ---------- Pantallas medianas/grandes ---------- */
 @media (min-width: 768px) {
-  #contenido {
-    max-width: 680px;
-    margin: 0 auto;
-  }
-
   .boton-flotante {
     left: 50%;
     transform: translateX(-50%);
     max-width: 560px;
+    padding: 0 40px;
   }
-
-/* ===== MEJORAS VISUALES v1.1 (comportamiento del consumidor) ===== */
-
-/* 1. Header con degradado rojo -> naranja brasas (apetito visual) */
-#encabezado {
-  background: linear-gradient(90deg, var(--color-primario), #FF4500);
+  .boton-flotante:active { transform: translateX(-50%) scale(0.98); }
 }
 
-/* 2. Micro-animaciones (feedback táctil) */
-.tarjeta-producto {
-  transition: transform .15s ease, box-shadow .15s ease;
-  position: relative;
-}
-.tarjeta-producto:active {
-  transform: scale(.98);
-}
-.boton-mas, .boton-agregar {
-  transition: transform .12s ease;
-}
-.boton-mas:active, .boton-agregar:active {
-  transform: scale(.9);
-}
-
-/* 3. Pulso del botón flotante — con box-shadow para NO pisar
-   el transform: translateX(-50%) del centrado en escritorio */
 @keyframes pulso-carrito {
-  0%   { box-shadow: 0 4px 14px rgba(255, 69, 0, 0.4); }
-  50%  { box-shadow: 0 4px 24px rgba(255, 69, 0, 0.9); }
-  100% { box-shadow: 0 4px 14px rgba(255, 69, 0, 0.4); }
+  0%   { box-shadow: 0 6px 16px rgba(255, 69, 0, 0.4), 0 0 0 4px rgba(255,255,255,.6); }
+  50%  { box-shadow: 0 6px 26px rgba(255, 69, 0, 0.9), 0 0 0 4px rgba(255,255,255,.6); }
+  100% { box-shadow: 0 6px 16px rgba(255, 69, 0, 0.4), 0 0 0 4px rgba(255,255,255,.6); }
 }
+
 .boton-flotante {
   animation: pulso-carrito 2s ease-in-out 3;
 }
 
-/* 4. Jerarquía del precio (anclaje) */
-.precio-producto {
-  font-size: 18px;
+/* Rebote al agregar un producto */
+@keyframes rebote-carrito {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.06); }
+  70%  { transform: scale(0.98); }
+  100% { transform: scale(1); }
 }
 
-/* 5. Elevación en escritorio */
-@media (hover: hover) {
-  .tarjeta-producto:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,.12);
+@media (min-width: 768px) {
+  @keyframes rebote-carrito {
+    0%   { transform: translateX(-50%) scale(1); }
+    35%  { transform: translateX(-50%) scale(1.06); }
+    70%  { transform: translateX(-50%) scale(0.98); }
+    100% { transform: translateX(-50%) scale(1); }
   }
 }
 
-/* 6. Badge de prueba social */
-.badge-destacado {
-  position: absolute;
-  top: -8px;
-  right: 10px;
-  background: #FF4500;
-  color: #FFF;
+.boton-flotante.rebote { animation: rebote-carrito 0.45s ease; }
+
+/* ============================================================
+   TOAST de feedback ("Agregado al pedido")
+   ============================================================ */
+#toast {
+  position: fixed;
+  top: 72px;
+  left: 50%;
+  transform: translate(-50%, -14px);
+  z-index: 130;
+  background: #173B22;
+  color: #D8FFE6;
+  font-size: 14.5px;
+  font-weight: 800;
+  padding: 12px 22px;
+  border-radius: 999px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  max-width: 92vw;
+  text-align: center;
+}
+
+#toast.visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/* ============================================================
+   ZONA MARKETING (testimonial, club, ubicación, footer)
+   Solo se muestra si LOCAL.marketing existe (opcional).
+   ============================================================ */
+#zona-marketing { margin-top: 34px; }
+
+.mk-seccion { margin-bottom: 30px; }
+
+.mk-titulo {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 19px;
+  font-weight: 800;
+  margin: 0 0 13px;
+}
+
+.mk-titulo::after {
+  content: "";
+  flex: 1;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--color-primario) 35%, transparent), transparent);
+}
+
+/* Testimonios */
+.testi-card {
+  background: var(--superficie);
+  border: 1px solid var(--borde-suave);
+  border-radius: 16px;
+  padding: 15px 16px;
+  margin-bottom: 11px;
+  box-shadow: 0 2px 8px rgba(120, 40, 20, 0.06);
+}
+
+.testi-estrellas {
+  color: var(--color-oro);
+  letter-spacing: 2px;
+  font-size: 14px;
+  margin-bottom: 5px;
+}
+
+.testi-texto {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-texto);
+  line-height: 1.55;
+}
+
+.testi-pie {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.testi-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--color-primario), var(--color-naranja));
+}
+
+.testi-nombre { font-size: 13.5px; font-weight: 800; line-height: 1.2; }
+.testi-zona { font-size: 11.5px; font-weight: 700; color: var(--texto-suave); }
+
+.testi-verificado {
+  margin-left: auto;
+  background: #E4F8EA;
+  color: #128A46;
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* Club */
+.club-card {
+  background: linear-gradient(120deg, #FFF6E0, #FFEDC2);
+  border: 2.5px dashed var(--color-oro);
+  border-radius: 18px;
+  padding: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+
+.club-info { flex: 1 1 220px; min-width: 0; }
+
+.club-titulo {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.club-texto {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #6B4A1E;
+}
+
+.club-sellos {
+  display: flex;
+  gap: 6px;
+  margin-top: 9px;
+}
+
+.club-sello {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  border: 2px solid var(--color-oro);
+  background: #FFFDF7;
+  opacity: 0.55;
+}
+
+.club-sello.on {
+  background: linear-gradient(135deg, var(--color-oro), color-mix(in srgb, var(--color-oro) 70%, #C77800));
+  border-color: transparent;
+  opacity: 1;
+  box-shadow: 0 3px 8px rgba(224, 159, 0, 0.4);
+}
+
+/* Ubicación */
+.ubi-card {
+  background: var(--superficie);
+  border: 1px solid var(--borde-suave);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(120, 40, 20, 0.06);
+}
+
+.ubi-fila {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  margin-bottom: 11px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--texto-suave);
+}
+
+.ubi-fila b { color: var(--color-texto); }
+
+.ubi-fila .ubi-ico {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: var(--color-suave);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+}
+
+.ubi-horario {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 2px;
+}
+
+.ubi-horario td {
+  padding: 7px 2px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--texto-suave);
+  border-bottom: 1px dashed var(--borde-suave);
+}
+
+.ubi-horario td:last-child { text-align: right; color: var(--color-texto); }
+.ubi-horario tr:last-child td { border-bottom: none; }
+
+.ubi-zona {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  background: #FFF6EA;
+  border: 1px solid var(--borde-suave);
+  border-radius: 12px;
+  padding: 10px 13px;
+  margin-bottom: 8px;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.ubi-zona b { color: var(--color-primario); white-space: nowrap; }
+
+/* Footer */
+.mk-footer {
+  background: var(--tinta-oscura);
+  color: rgba(255, 238, 220, 0.82);
+  border-radius: 18px;
+  padding: 22px 20px;
+  text-align: center;
+}
+
+.mk-footer .mf-nombre {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--color-oro);
+  margin: 0 0 6px;
+}
+
+.mk-footer p {
+  margin: 0 0 4px;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.mk-footer .mf-pagos {
+  margin-top: 10px;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mk-footer .mf-pago {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   font-size: 11px;
   font-weight: 800;
-  padding: 5px 10px;
+  letter-spacing: 0.6px;
+  padding: 4px 10px;
   border-radius: 999px;
-  box-shadow: 0 2px 6px rgba(0,0,0,.2);
-  z-index: 10;
+}
+
+/* Animación de aparición suave (respeta prefers-reduced-motion) */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  html { scroll-behavior: auto; }
+  .reveal { opacity: 1; transform: none; }
+}
+
+/* ============================================================
+   PANTALLAS MEDIANAS/GRANDES
+   ============================================================ */
+@media (max-width: 420px) {
+  #local-nombre { font-size: 14.5px; }
+  #local-logo, #local-monograma { width: 36px; height: 36px; }
+  #badge-mesa { font-size: 15px; padding: 9px 13px; }
+}
+
+/* ============================================================
+   v4.1 — ABOVE-THE-FOLD EN MÓVILES
+   En celulares, la banda de marca + promo empujaban el menú
+   fuera de la primera pantalla. Compactamos ambas para que las
+   primeras tarjetas de la carta asomen desde el inicio.
+   (Va antes de las media queries de escritorio.)
+   ============================================================ */
+@media (max-width: 768px) {
+  #banda-marca { padding: 14px 16px; margin: 4px 0 12px; }
+  #banda-marca h2 { font-size: 20px; }
+  #banda-marca p.bm-sub { margin: 0 0 10px; font-size: 13.5px; }
+  #promo-dia { padding: 12px 14px; margin: 0 0 14px; }
+}
+
+@media (min-width: 768px) {
+  #banda-marca h2 { font-size: 30px; }
+
+  #promo-dia .pd-titulo { font-size: 20px; }
+
+  /* El menú sigue a una columna (tarjetas grandes, táctiles);
+     la zona marketing sí aprovecha el ancho. */
+  .testi-card { padding: 17px 18px; }
+
+  .mk-duo {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    align-items: start;
+  }
 }
